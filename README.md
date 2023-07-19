@@ -1,4 +1,4 @@
-<center>
+<div align="center">
 
 ![blackheart](https://fars.ee/~blackheart.png)
 
@@ -24,7 +24,7 @@ a more enjoyable coding experience
 ![C++](https://img.shields.io/badge/cpp-00599C?style=flat-square&logo=c%2B%2B&logoColor=white)
 ![Go](https://img.shields.io/badge/golang-00ADD8?style=flat-square&logo=go&logoColor=white)
 
-</center>
+</div>
 
 ## ✨ Features
 
