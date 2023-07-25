@@ -43,9 +43,6 @@ return {
 				-- shell
 				bashls = {},
 
-				-- c++
-				cmake = {},
-
 				-- markdown
 				marksman = {},
 
@@ -123,6 +120,7 @@ return {
 		{ import = "lazyvim.plugins.extras.lang.go" },
 		{ import = "lazyvim.plugins.extras.lang.rust" },
 		{ import = "lazyvim.plugins.extras.lang.clangd" },
+		{ import = "lazyvim.plugins.extras.lang.cmake" },
 		{ import = "lazyvim.plugins.extras.lang.python" },
 		{ import = "lazyvim.plugins.extras.lang.elixir" },
 		{ import = "lazyvim.plugins.extras.lang.json" },
