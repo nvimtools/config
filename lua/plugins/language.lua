@@ -182,6 +182,9 @@ return {
 			},
 		},
 	},
+	{ -- tests
+		{ import = "lazyvim.plugins.extras.test.core" },
+	},
 
 	{ -- dependencies
 		"williamboman/mason.nvim",
