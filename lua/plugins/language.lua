@@ -38,7 +38,6 @@ return {
 					},
 				},
 			},
-			---@type lspconfig.options
 			servers = {
 				-- shell
 				bashls = {},
@@ -47,13 +46,6 @@ return {
 				marksman = {},
 
 				-- misc
-				yamlls = {
-					---@param new_config lspconfig.options.yamlls
-					on_new_config = function(new_config)
-						new_config.settings.yaml.schemas = new_config.settings.yaml.schemas or {}
-						vim.list_extend(new_config.settings.yaml.schemas, require("schemastore").yaml.schemas())
-					end,
-				},
 				-- ltex = {},
 				grammarly = {},
 			},
@@ -122,8 +114,10 @@ return {
 		{ import = "lazyvim.plugins.extras.lang.clangd" },
 		{ import = "lazyvim.plugins.extras.lang.cmake" },
 		{ import = "lazyvim.plugins.extras.lang.python" },
+		{ import = "lazyvim.plugins.extras.lang.python-semshi" },
 		{ import = "lazyvim.plugins.extras.lang.elixir" },
 		{ import = "lazyvim.plugins.extras.lang.json" },
+		{ import = "lazyvim.plugins.extras.lang.yaml" },
 		{ import = "lazyvim.plugins.extras.linting.eslint" },
 		{
 			"mrcjkb/haskell-tools.nvim",
@@ -171,9 +165,6 @@ return {
 			"jay-babu/mason-nvim-dap.nvim",
 			opts = {
 				ensure_installed = {
-					-- python
-					"python",
-
 					-- typescript
 					"node2",
 					"firefox",
@@ -205,6 +196,7 @@ return {
 				-- misc
 				"editorconfig-checker",
 				"jsonnet-language-server",
+				"actionlint",
 				-- "commitlint",
 			})
 			return opts
