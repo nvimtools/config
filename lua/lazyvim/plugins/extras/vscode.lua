@@ -14,7 +14,7 @@ local enabled = {
 	"nvim-treesitter-textobjects",
 	"nvim-ts-context-commentstring",
 	"vim-repeat",
-	"LazyVim",
+	"daze",
 }
 
 local Config = require("lazy.core.config")
@@ -37,7 +37,7 @@ vim.api.nvim_create_autocmd("User", {
 
 return {
 	{
-		"LazyVim/LazyVim",
+		"nvimtools/daze",
 		config = function(_, opts)
 			opts = opts or {}
 			-- disable the colorscheme
