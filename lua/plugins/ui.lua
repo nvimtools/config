@@ -21,7 +21,7 @@ return {
 			-- priority = 1000,
 		},
 		{
-			"LazyVim/LazyVim",
+			"nvimtools/daze",
 			opts = {
 				colorscheme = "nord",
 			},

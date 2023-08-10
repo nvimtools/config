@@ -1,4 +1,4 @@
 return {
 	{ "folke/lazy.nvim", version = false },
-	{ "LazyVim/LazyVim", version = false },
+	{ "nvimtools/daze", version = false },
 }

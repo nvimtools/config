@@ -4,6 +4,7 @@ return {
 		opts = function(_, opts)
 			opts.highlight.disable = {
 				"c",
+				"lua",
 			}
 			vim.list_extend(opts.ensure_installed, {
 				"jsonnet",
@@ -47,7 +48,7 @@ return {
 
 				-- misc
 				-- ltex = {},
-				grammarly = {},
+				-- grammarly = {},
 			},
 		},
 		setup = {
@@ -69,21 +70,8 @@ return {
 		},
 		opts = function(_, opts)
 			local nls = require("null-ls")
-			local helpers = require("null-ls.helpers")
 
 			vim.list_extend(opts.sources, {
-				-- python
-				{
-					name = "blackd",
-					method = nls.methods.FORMATTING,
-					filetypes = { "python" },
-					generator = helpers.formatter_factory({
-						command = "blackd-client",
-						to_stdin = true,
-					}),
-				},
-				nls.builtins.formatting.usort,
-
 				-- git
 				-- nls.builtins.diagnostics.commitlint,
 				nls.builtins.code_actions.gitrebase,
@@ -108,54 +96,28 @@ return {
 	},
 	{ -- language specific settings
 		{ import = "lazyvim.plugins.extras.lang.typescript" },
+		{ import = "lazyvim.plugins.extras.linting.eslint" },
 		{ import = "lazyvim.plugins.extras.lang.tailwind" },
+
 		{ import = "lazyvim.plugins.extras.lang.go" },
+
 		{ import = "lazyvim.plugins.extras.lang.rust" },
+
 		{ import = "lazyvim.plugins.extras.lang.clangd" },
 		{ import = "lazyvim.plugins.extras.lang.cmake" },
+
 		{ import = "lazyvim.plugins.extras.lang.python" },
+		{ import = "lazyvim.plugins.extras.formatting.blackd" },
+		{ import = "lazyvim.plugins.extras.formatting.usort" },
+
 		{ import = "lazyvim.plugins.extras.lang.elixir" },
+
 		{ import = "lazyvim.plugins.extras.lang.json" },
 		{ import = "lazyvim.plugins.extras.lang.yaml" },
-		{ import = "lazyvim.plugins.extras.linting.eslint" },
-		{
-			"mrcjkb/haskell-tools.nvim",
-			ft = { "haskell" },
-			dependencies = {
-				"nvim-lua/plenary.nvim",
-				"nvim-telescope/telescope.nvim",
-			},
-			config = function()
-				local ht = require("haskell-tools")
-				ht.start_or_attach()
-			end,
-			keys = {
-				{
-					"<space>ch",
-					function()
-						require("haskell-tools").hoogle.hoogle_signature()
-					end,
-					mode = "n",
-					desc = "Hoogle Signature",
-				},
-				{
-					"<space>ce",
-					function()
-						require("haskell-tools").lsp.buf_eval_all()
-					end,
-					mode = "n",
-					desc = "Eval All",
-				},
-			},
-		},
-		{
-			"eraserhd/parinfer-rust",
-			build = "cargo build --release",
-		},
-		{
-			"elkowar/yuck.vim",
-			ft = { "yuck" },
-		},
+		{ import = "lazyvim.plugins.extras.lang.docker" },
+
+		{ import = "lazyvim.plugins.extras.lang.haskell" },
+		{ import = "lazyvim.plugins.extras.lang.yuck" },
 	},
 	{ -- debug adapter
 		{ import = "lazyvim.plugins.extras.dap.core" },
@@ -181,16 +143,8 @@ return {
 		---@param opts MasonSettings | {ensure_installed: string[]}
 		opts = function(_, opts)
 			vim.list_extend(opts.ensure_installed, {
-				-- python
-				"black",
-				"blackd-client",
-				"usort",
-
 				-- shell
 				"shellcheck",
-
-				-- haskell
-				"haskell-debug-adapter",
 
 				-- misc
 				"editorconfig-checker",

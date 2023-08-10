@@ -143,7 +143,6 @@ return {
 			opt.foldlevelstart = 99 -- do not autofold
 			opt.foldenable = true
 		end,
-		---@type LazyKeys[]
 		keys = {
 			{
 				"K",
@@ -202,27 +201,7 @@ return {
 			"hrsh7th/cmp-emoji",
 			{
 				-- AI code completions
-				-- { import = "lazyvim.plugins.extras.coding.copilot" },
-				-- {
-				--   "tzachar/cmp-tabnine",
-				--   event = "VeryLazy",
-				--   build = "./install.sh",
-				-- },
-
-				{
-					"jcdickinson/codeium.nvim",
-					event = "VeryLazy",
-					dependencies = {
-						{
-							"jcdickinson/http.nvim",
-							build = "cargo build --workspace --release",
-						},
-						"nvim-lua/plenary.nvim",
-					},
-					config = function()
-						require("codeium").setup({})
-					end,
-				},
+				{ import = "lazyvim.plugins.extras.coding.codeium" },
 			},
 		},
 		---@param opts cmp.ConfigSchema
@@ -265,16 +244,16 @@ return {
 			end
 
 			-- table.insert(opts.sources, 1, { name = "cmp_tabnine", group_index = 2 })
-			table.insert(opts.sources, 1, { name = "codeium", group_index = 2 })
+			-- table.insert(opts.sources, 1, { name = "codeium", group_index = 2 })
 			table.insert(opts.sources, { name = "emoji" })
 
-			opts.window = {
+			opts.window = vim.tbl_deep_extend("force", opts.window or {}, {
 				completion = {
 					col_offset = -3,
 					side_padding = 0,
 				},
-			}
-			opts.formatting = {
+			})
+			opts.formatting = vim.tbl_deep_extend("force", opts.formatting or {}, {
 				fields = { "kind", "abbr", "menu" },
 				format = function(_, item)
 					local icons = require("lazyvim.config").icons.kinds
@@ -282,7 +261,7 @@ return {
 					item.kind = " " .. (icons[item.kind] or "  ")
 					return item
 				end,
-			}
+			})
 
 			return opts
 		end,
