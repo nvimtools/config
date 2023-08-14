@@ -25,10 +25,6 @@ return {
 		end
 	end,
 	opts = {
-		defaults = {
-			prompt_prefix = " 󰍉 ",
-			selection_caret = "󰅂 ",
-		},
 		extensions = {
 			"fzf",
 			"ghq",

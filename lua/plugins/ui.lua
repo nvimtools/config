@@ -1,5 +1,6 @@
 return {
 	{ -- sidepanels
+		-- { import = "lazyvim.plugins.extras.ui.edgy" },
 		{
 			"akinsho/bufferline.nvim",
 			dependencies = {
@@ -8,15 +9,6 @@ return {
 			---@param opts bufferline.UserConfig
 			opts = function(_, opts)
 				local options = opts.options
-				options.always_show_bufferline = true
-				options.offsets = {
-					{
-						filetype = "neo-tree",
-						text = "File Explorer",
-						highlight = "Directory",
-						text_align = "left",
-					},
-				}
 				if vim.opt.mousemoveevent then
 					options.hover = {
 						enabled = true,
@@ -24,52 +16,8 @@ return {
 						reveal = { "close" },
 					}
 				end
-				options.separator_style = "thin"
 				options.highlights = require("nord.plugins.bufferline").akinsho()
-				options.buffer_close_icon = "󰖭"
-				options.close_icon = "󰅙 "
-				options.modified_icon = "󰛿"
-				options.left_trunc_marker = "󰄽"
-				options.right_trunc_marker = "󰄾"
 			end,
-		},
-
-		{
-			-- { import = "lazyvim.plugins.extras.ui.edgy" },
-			{
-				"nvim-neo-tree/neo-tree.nvim",
-				opts = {
-					window = {
-						position = "left",
-					},
-					default_component_configs = {
-						icon = {
-							folder_closed = "󰉋",
-							folder_open = "󰉖",
-							folder_empty = "󱞞",
-						},
-						modified = {
-							symbol = "󰏫",
-							highlight = "NeoTreeModified",
-						},
-						git_status = {
-							symbols = {
-								untracked = "󰋗",
-								ignored = "󰘓",
-								unstaged = "󰏫",
-								staged = "󰠘",
-								conflict = "󰓧",
-							},
-						},
-					},
-					filesystem = {
-						follow_current_file = {
-							enabled = true,
-						},
-						use_libuv_file_watcher = true,
-					},
-				},
-			},
 		},
 	},
 
@@ -172,35 +120,6 @@ return {
 	},
 
 	{ -- aesthetics
-		{
-			"rcarriga/nvim-notify",
-			opts = {
-				-- background_colour = "NormalFloat",
-				-- fps = 15,
-				icons = {
-					DEBUG = "󰃤",
-					ERROR = "󰅙",
-					INFO = "󰋼",
-					TRACE = "󰤀",
-					WARN = "󰀦",
-				},
-			},
-		},
-		{
-			"folke/zen-mode.nvim",
-			cmd = "ZenMode",
-			---@type ZenOptions
-			opts = {
-				-- on_open = function(win)
-				--   vim.api.nvim_win_set_option(require("zen-mode.view").bg_win, "winhighlight", "NormalFloat:Normal")
-				--   vim.api.nvim_win_set_option(win, "winhighlight", "Normal:ZenBg")
-				-- end,
-			},
-		},
-		{
-			"folke/twilight.nvim",
-			cmd = { "Twilight", "TwilightEnable", "TwilightDisable" },
-		},
 		{
 			"m4xshen/hardtime.nvim",
 			event = "VeryLazy",

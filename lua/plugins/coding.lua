@@ -199,8 +199,7 @@ return {
 		"hrsh7th/nvim-cmp",
 		dependencies = {
 			"hrsh7th/cmp-emoji",
-			{
-				-- AI code completions
+			{ -- AI code completions
 				{ import = "lazyvim.plugins.extras.coding.codeium" },
 			},
 		},

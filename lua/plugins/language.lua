@@ -1,15 +1,13 @@
 return {
 	{
 		"nvim-treesitter/nvim-treesitter",
-		opts = function(_, opts)
-			opts.highlight.disable = {
-				"c",
-			}
-			vim.list_extend(opts.ensure_installed, {
-				"jsonnet",
-			})
-			return opts
-		end,
+		opts = {
+			highlight = {
+				disable = {
+					"c",
+				},
+			},
+		},
 	},
 	{ -- lsp
 		"neovim/nvim-lspconfig",
@@ -23,31 +21,16 @@ return {
 				},
 				opts = { lsp = { auto_attach = true } },
 			},
-			{
-				"lvimuser/lsp-inlayhints.nvim",
-				event = "LspAttach",
-			},
 		},
 		---@class PluginLspOpts
 		opts = {
 			capabilities = {
 				textDocument = {
-					foldingRange = {
+					foldingRange = { -- for nvim-ufo
 						dynamicRegistration = false,
 						lineFoldingOnly = true,
 					},
 				},
-			},
-			servers = {
-				-- shell
-				bashls = {},
-
-				-- markdown
-				marksman = {},
-
-				-- misc
-				-- ltex = {},
-				-- grammarly = {},
 			},
 		},
 		setup = {
@@ -112,11 +95,16 @@ return {
 		{ import = "lazyvim.plugins.extras.lang.elixir" },
 
 		{ import = "lazyvim.plugins.extras.lang.json" },
+		{ import = "lazyvim.plugins.extras.lang.jsonnet" },
 		{ import = "lazyvim.plugins.extras.lang.yaml" },
+		{ import = "lazyvim.plugins.extras.lang.dhall" },
 		{ import = "lazyvim.plugins.extras.lang.docker" },
+		{ import = "lazyvim.plugins.extras.lang.shell" },
 
 		{ import = "lazyvim.plugins.extras.lang.haskell" },
 		{ import = "lazyvim.plugins.extras.lang.yuck" },
+
+		{ import = "lazyvim.plugins.extras.lang.markdown" },
 	},
 	{ -- debug adapter
 		{ import = "lazyvim.plugins.extras.dap.core" },
@@ -142,12 +130,8 @@ return {
 		---@param opts MasonSettings | {ensure_installed: string[]}
 		opts = function(_, opts)
 			vim.list_extend(opts.ensure_installed, {
-				-- shell
-				"shellcheck",
-
 				-- misc
 				"editorconfig-checker",
-				"jsonnet-language-server",
 				"actionlint",
 				-- "commitlint",
 			})
