@@ -145,7 +145,7 @@ return {
 		end,
 		keys = {
 			{
-				"K",
+				"zK",
 				function()
 					local winid = require("ufo").peekFoldedLinesUnderCursor()
 					if not winid then
