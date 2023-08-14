@@ -32,16 +32,61 @@ return {
 			-- make sure mason installs the server
 			servers = {
 				jdtls = {
-          -- stylua: ignore
-          keys = {
-            { "<leader>co", function() require("jdtls").organize_imports() end, desc = "Organize Imports", },
-            { "<leader>cR", function() require("jdtls").rename_file() end, desc = "Rename File", },
-            { "<leader>cxv", function() require("jdtls").extract_variable() end, desc = "Extract Variable", },
-            { "<leader>cxv", function() require("jdtls").extract_variable({ visual = true }) end, mode = "v", desc = "Extract Variable", },
-            { "<leader>cxc", function() require("jdtls").extract_constant() end, desc = "Extract Constant", },
-            { "<leader>cxc", function() require("jdtls").extract_constant({ visual = true }) end, mode = "v", desc = "Extract Constant", },
-            { "<leader>cxm", function() require("jdtls").extract_method({ visual = true }) end, mode = "v", desc = "Extract Method", },
-          },
+
+					keys = {
+						{
+							"<leader>co",
+							function()
+								require("jdtls").organize_imports()
+							end,
+							desc = "Organize Imports",
+						},
+						{
+							"<leader>cR",
+							function()
+								require("jdtls").rename_file()
+							end,
+							desc = "Rename File",
+						},
+						{
+							"<leader>cxv",
+							function()
+								require("jdtls").extract_variable()
+							end,
+							desc = "Extract Variable",
+						},
+						{
+							"<leader>cxv",
+							function()
+								require("jdtls").extract_variable({ visual = true })
+							end,
+							mode = "v",
+							desc = "Extract Variable",
+						},
+						{
+							"<leader>cxc",
+							function()
+								require("jdtls").extract_constant()
+							end,
+							desc = "Extract Constant",
+						},
+						{
+							"<leader>cxc",
+							function()
+								require("jdtls").extract_constant({ visual = true })
+							end,
+							mode = "v",
+							desc = "Extract Constant",
+						},
+						{
+							"<leader>cxm",
+							function()
+								require("jdtls").extract_method({ visual = true })
+							end,
+							mode = "v",
+							desc = "Extract Method",
+						},
+					},
 				},
 			},
 			setup = {

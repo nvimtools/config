@@ -4,11 +4,23 @@ return {
 	dependencies = {
 		{
 			"jbyuki/one-small-step-for-vimkind",
-      -- stylua: ignore
-      keys = {
-        { "<leader>daL", function() require("osv").launch({ port = 8086 }) end, desc = "Adapter Lua Server" },
-        { "<leader>dal", function() require("osv").run_this() end, desc = "Adapter Lua" },
-      },
+
+			keys = {
+				{
+					"<leader>daL",
+					function()
+						require("osv").launch({ port = 8086 })
+					end,
+					desc = "Adapter Lua Server",
+				},
+				{
+					"<leader>dal",
+					function()
+						require("osv").run_this()
+					end,
+					desc = "Adapter Lua",
+				},
+			},
 			config = function()
 				local dap = require("dap")
 				dap.adapters.nlua = function(callback, config)

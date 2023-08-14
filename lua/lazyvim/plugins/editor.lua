@@ -56,6 +56,24 @@ return {
 					expander_expanded = "",
 					expander_highlight = "NeoTreeExpander",
 				},
+				icon = {
+					folder_closed = "󰉋",
+					folder_open = "󰉖",
+					folder_empty = "󱞞",
+				},
+				modified = {
+					symbol = "󰏫",
+					highlight = "NeoTreeModified",
+				},
+				git_status = {
+					symbols = {
+						untracked = "󰋗",
+						ignored = "󰘓",
+						unstaged = "󰏫",
+						staged = "󰠘",
+						conflict = "󰓧",
+					},
+				},
 			},
 		},
 		config = function(_, opts)
@@ -76,10 +94,15 @@ return {
 		"nvim-pack/nvim-spectre",
 		cmd = "Spectre",
 		opts = { open_cmd = "noswapfile vnew" },
-    -- stylua: ignore
-    keys = {
-      { "<leader>sr", function() require("spectre").open() end, desc = "Replace in files (Spectre)" },
-    },
+		keys = {
+			{
+				"<leader>sr",
+				function()
+					require("spectre").open()
+				end,
+				desc = "Replace in files (Spectre)",
+			},
+		},
 	},
 
 	-- fuzzy finder
@@ -167,8 +190,23 @@ return {
 		},
 		opts = {
 			defaults = {
-				prompt_prefix = " ",
-				selection_caret = " ",
+				layout_config = {
+					horizontal = {
+						prompt_position = "top",
+						preview_width = 0.55,
+						results_width = 0.8,
+					},
+					vertical = {
+						mirror = false,
+					},
+					width = 0.87,
+					height = 0.80,
+					preview_cutoff = 120,
+				},
+				file_ignore_patterns = { "node_modules" },
+				border = {},
+				prompt_prefix = " 󰍉 ",
+				selection_caret = "󰅂 ",
 				mappings = {
 					i = {
 						["<c-t>"] = function(...)
@@ -243,14 +281,48 @@ If you rather use leap/flit instead, you can add the leap extra:
 		vscode = true,
 		---@type Flash.Config
 		opts = {},
-    -- stylua: ignore
-    keys = {
-      { "s", mode = { "n", "x", "o" }, function() require("flash").jump() end, desc = "Flash" },
-      { "S", mode = { "n", "o", "x" }, function() require("flash").treesitter() end, desc = "Flash Treesitter" },
-      { "r", mode = "o", function() require("flash").remote() end, desc = "Remote Flash" },
-      { "R", mode = { "o", "x" }, function() require("flash").treesitter_search() end, desc = "Treesitter Search" },
-      { "<c-s>", mode = { "c" }, function() require("flash").toggle() end, desc = "Toggle Flash Search" },
-    },
+		keys = {
+			{
+				"s",
+				mode = { "n", "x", "o" },
+				function()
+					require("flash").jump()
+				end,
+				desc = "Flash",
+			},
+			{
+				"S",
+				mode = { "n", "o", "x" },
+				function()
+					require("flash").treesitter()
+				end,
+				desc = "Flash Treesitter",
+			},
+			{
+				"r",
+				mode = "o",
+				function()
+					require("flash").remote()
+				end,
+				desc = "Remote Flash",
+			},
+			{
+				"R",
+				mode = { "o", "x" },
+				function()
+					require("flash").treesitter_search()
+				end,
+				desc = "Treesitter Search",
+			},
+			{
+				"<c-s>",
+				mode = { "c" },
+				function()
+					require("flash").toggle()
+				end,
+				desc = "Toggle Flash Search",
+			},
+		},
 	},
 
 	-- Flash Telescope config
@@ -340,19 +412,22 @@ If you rather use leap/flit instead, you can add the leap extra:
 					vim.keymap.set(mode, l, r, { buffer = buffer, desc = desc })
 				end
 
-        -- stylua: ignore start
-        map("n", "]h", gs.next_hunk, "Next Hunk")
-        map("n", "[h", gs.prev_hunk, "Prev Hunk")
-        map({ "n", "v" }, "<leader>ghs", ":Gitsigns stage_hunk<CR>", "Stage Hunk")
-        map({ "n", "v" }, "<leader>ghr", ":Gitsigns reset_hunk<CR>", "Reset Hunk")
-        map("n", "<leader>ghS", gs.stage_buffer, "Stage Buffer")
-        map("n", "<leader>ghu", gs.undo_stage_hunk, "Undo Stage Hunk")
-        map("n", "<leader>ghR", gs.reset_buffer, "Reset Buffer")
-        map("n", "<leader>ghp", gs.preview_hunk, "Preview Hunk")
-        map("n", "<leader>ghb", function() gs.blame_line({ full = true }) end, "Blame Line")
-        map("n", "<leader>ghd", gs.diffthis, "Diff This")
-        map("n", "<leader>ghD", function() gs.diffthis("~") end, "Diff This ~")
-        map({ "o", "x" }, "ih", ":<C-U>Gitsigns select_hunk<CR>", "GitSigns Select Hunk")
+				map("n", "]h", gs.next_hunk, "Next Hunk")
+				map("n", "[h", gs.prev_hunk, "Prev Hunk")
+				map({ "n", "v" }, "<leader>ghs", ":Gitsigns stage_hunk<CR>", "Stage Hunk")
+				map({ "n", "v" }, "<leader>ghr", ":Gitsigns reset_hunk<CR>", "Reset Hunk")
+				map("n", "<leader>ghS", gs.stage_buffer, "Stage Buffer")
+				map("n", "<leader>ghu", gs.undo_stage_hunk, "Undo Stage Hunk")
+				map("n", "<leader>ghR", gs.reset_buffer, "Reset Buffer")
+				map("n", "<leader>ghp", gs.preview_hunk, "Preview Hunk")
+				map("n", "<leader>ghb", function()
+					gs.blame_line({ full = true })
+				end, "Blame Line")
+				map("n", "<leader>ghd", gs.diffthis, "Diff This")
+				map("n", "<leader>ghD", function()
+					gs.diffthis("~")
+				end, "Diff This ~")
+				map({ "o", "x" }, "ih", ":<C-U>Gitsigns select_hunk<CR>", "GitSigns Select Hunk")
 			end,
 		},
 	},
@@ -400,11 +475,22 @@ If you rather use leap/flit instead, you can add the leap extra:
 	-- buffer remove
 	{
 		"echasnovski/mini.bufremove",
-    -- stylua: ignore
-    keys = {
-      { "<leader>bd", function() require("mini.bufremove").delete(0, false) end, desc = "Delete Buffer" },
-      { "<leader>bD", function() require("mini.bufremove").delete(0, true) end, desc = "Delete Buffer (Force)" },
-    },
+		keys = {
+			{
+				"<leader>bd",
+				function()
+					require("mini.bufremove").delete(0, false)
+				end,
+				desc = "Delete Buffer",
+			},
+			{
+				"<leader>bD",
+				function()
+					require("mini.bufremove").delete(0, true)
+				end,
+				desc = "Delete Buffer (Force)",
+			},
+		},
 	},
 
 	-- better diagnostics list and others
@@ -455,14 +541,25 @@ If you rather use leap/flit instead, you can add the leap extra:
 		cmd = { "TodoTrouble", "TodoTelescope" },
 		event = { "BufReadPost", "BufNewFile" },
 		config = true,
-    -- stylua: ignore
-    keys = {
-      { "]t", function() require("todo-comments").jump_next() end, desc = "Next todo comment" },
-      { "[t", function() require("todo-comments").jump_prev() end, desc = "Previous todo comment" },
-      { "<leader>xt", "<cmd>TodoTrouble<cr>", desc = "Todo (Trouble)" },
-      { "<leader>xT", "<cmd>TodoTrouble keywords=TODO,FIX,FIXME<cr>", desc = "Todo/Fix/Fixme (Trouble)" },
-      { "<leader>st", "<cmd>TodoTelescope<cr>", desc = "Todo" },
-      { "<leader>sT", "<cmd>TodoTelescope keywords=TODO,FIX,FIXME<cr>", desc = "Todo/Fix/Fixme" },
-    },
+		keys = {
+			{
+				"]t",
+				function()
+					require("todo-comments").jump_next()
+				end,
+				desc = "Next todo comment",
+			},
+			{
+				"[t",
+				function()
+					require("todo-comments").jump_prev()
+				end,
+				desc = "Previous todo comment",
+			},
+			{ "<leader>xt", "<cmd>TodoTrouble<cr>", desc = "Todo (Trouble)" },
+			{ "<leader>xT", "<cmd>TodoTrouble keywords=TODO,FIX,FIXME<cr>", desc = "Todo/Fix/Fixme (Trouble)" },
+			{ "<leader>st", "<cmd>TodoTelescope<cr>", desc = "Todo" },
+			{ "<leader>sT", "<cmd>TodoTelescope keywords=TODO,FIX,FIXME<cr>", desc = "Todo/Fix/Fixme" },
+		},
 	},
 }

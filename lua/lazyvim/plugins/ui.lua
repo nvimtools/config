@@ -19,6 +19,13 @@ return {
 			max_width = function()
 				return math.floor(vim.o.columns * 0.75)
 			end,
+			icons = {
+				DEBUG = "󰃤",
+				ERROR = "󰅙",
+				INFO = "󰋼",
+				TRACE = "󰤀",
+				WARN = "󰀦",
+			},
 		},
 		init = function()
 			-- when noice is not enabled, install notify on VeryLazy
@@ -60,10 +67,12 @@ return {
 		},
 		opts = {
 			options = {
-        -- stylua: ignore
-        close_command = function(n) require("mini.bufremove").delete(n, false) end,
-        -- stylua: ignore
-        right_mouse_command = function(n) require("mini.bufremove").delete(n, false) end,
+				close_command = function(n)
+					require("mini.bufremove").delete(n, false)
+				end,
+				right_mouse_command = function(n)
+					require("mini.bufremove").delete(n, false)
+				end,
 				diagnostics = "nvim_lsp",
 				always_show_bufferline = false,
 				diagnostics_indicator = function(_, _, diag)
@@ -75,7 +84,7 @@ return {
 				offsets = {
 					{
 						filetype = "neo-tree",
-						text = "Neo-tree",
+						text = "File Explorer",
 						highlight = "Directory",
 						text_align = "left",
 					},
@@ -113,31 +122,43 @@ return {
 						},
 						{ "filetype", icon_only = true, separator = "", padding = { left = 1, right = 0 } },
 						{ "filename", path = 1, symbols = { modified = "  ", readonly = "", unnamed = "" } },
-            -- stylua: ignore
-            {
-              function() return require("nvim-navic").get_location() end,
-              cond = function() return package.loaded["nvim-navic"] and require("nvim-navic").is_available() end,
-            },
+						{
+							function()
+								return require("nvim-navic").get_location()
+							end,
+							cond = function()
+								return package.loaded["nvim-navic"] and require("nvim-navic").is_available()
+							end,
+						},
 					},
 					lualine_x = {
-            -- stylua: ignore
-            {
-              function() return require("noice").api.status.command.get() end,
-              cond = function() return package.loaded["noice"] and require("noice").api.status.command.has() end,
-              color = Util.fg("Statement"),
-            },
-            -- stylua: ignore
-            {
-              function() return require("noice").api.status.mode.get() end,
-              cond = function() return package.loaded["noice"] and require("noice").api.status.mode.has() end,
-              color = Util.fg("Constant"),
-            },
-            -- stylua: ignore
-            {
-              function() return "  " .. require("dap").status() end,
-              cond = function () return package.loaded["dap"] and require("dap").status() ~= "" end,
-              color = Util.fg("Debug"),
-            },
+						{
+							function()
+								return require("noice").api.status.command.get()
+							end,
+							cond = function()
+								return package.loaded["noice"] and require("noice").api.status.command.has()
+							end,
+							color = Util.fg("Statement"),
+						},
+						{
+							function()
+								return require("noice").api.status.mode.get()
+							end,
+							cond = function()
+								return package.loaded["noice"] and require("noice").api.status.mode.has()
+							end,
+							color = Util.fg("Constant"),
+						},
+						{
+							function()
+								return "  " .. require("dap").status()
+							end,
+							cond = function()
+								return package.loaded["dap"] and require("dap").status() ~= ""
+							end,
+							color = Util.fg("Debug"),
+						},
 						{
 							require("lazy.status").updates,
 							cond = require("lazy.status").has_updates,
@@ -264,16 +285,68 @@ return {
 				inc_rename = true,
 			},
 		},
-    -- stylua: ignore
-    keys = {
-      { "<S-Enter>", function() require("noice").redirect(vim.fn.getcmdline()) end, mode = "c", desc = "Redirect Cmdline" },
-      { "<leader>snl", function() require("noice").cmd("last") end, desc = "Noice Last Message" },
-      { "<leader>snh", function() require("noice").cmd("history") end, desc = "Noice History" },
-      { "<leader>sna", function() require("noice").cmd("all") end, desc = "Noice All" },
-      { "<leader>snd", function() require("noice").cmd("dismiss") end, desc = "Dismiss All" },
-      { "<c-f>", function() if not require("noice.lsp").scroll(4) then return "<c-f>" end end, silent = true, expr = true, desc = "Scroll forward", mode = {"i", "n", "s"} },
-      { "<c-b>", function() if not require("noice.lsp").scroll(-4) then return "<c-b>" end end, silent = true, expr = true, desc = "Scroll backward", mode = {"i", "n", "s"}},
-    },
+		keys = {
+			{
+				"<S-Enter>",
+				function()
+					require("noice").redirect(vim.fn.getcmdline())
+				end,
+				mode = "c",
+				desc = "Redirect Cmdline",
+			},
+			{
+				"<leader>snl",
+				function()
+					require("noice").cmd("last")
+				end,
+				desc = "Noice Last Message",
+			},
+			{
+				"<leader>snh",
+				function()
+					require("noice").cmd("history")
+				end,
+				desc = "Noice History",
+			},
+			{
+				"<leader>sna",
+				function()
+					require("noice").cmd("all")
+				end,
+				desc = "Noice All",
+			},
+			{
+				"<leader>snd",
+				function()
+					require("noice").cmd("dismiss")
+				end,
+				desc = "Dismiss All",
+			},
+			{
+				"<c-f>",
+				function()
+					if not require("noice.lsp").scroll(4) then
+						return "<c-f>"
+					end
+				end,
+				silent = true,
+				expr = true,
+				desc = "Scroll forward",
+				mode = { "i", "n", "s" },
+			},
+			{
+				"<c-b>",
+				function()
+					if not require("noice.lsp").scroll(-4) then
+						return "<c-b>"
+					end
+				end,
+				silent = true,
+				expr = true,
+				desc = "Scroll backward",
+				mode = { "i", "n", "s" },
+			},
+		},
 	},
 
 	-- Dashboard. This runs when neovim starts, and is what displays
