@@ -8,7 +8,7 @@ vim.opt.rtp:prepend(vim.env.LAZY or lazypath)
 
 require("lazy").setup({
 	spec = {
-		{ "nvimtools/daze", import = "lazyvim.plugins" },
+		{ "nvimtools/config", branch = "daze", name = "daze", import = "lazyvim.plugins" },
 		{ import = "plugins" },
 	},
 	defaults = {
