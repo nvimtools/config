@@ -11,9 +11,10 @@ a more enjoyable coding experience
 /
 個人用向 neovim 配置
 
-![Neovim 0.9+](https://img.shields.io/badge/neovim-0.9%2B-57A143?style=for-the-badge&logo=neovim&logoColor=white&colorA=4c566a)
+![Neovim 0.10+](https://img.shields.io/badge/neovim-0.10%2B-57A143?style=for-the-badge&logo=neovim&logoColor=white&colorA=4c566a)
 ![Last commit](https://img.shields.io/github/last-commit/nvimtools/config?style=for-the-badge&logo=git&colorA=4c566a&logoColor=white)
 ![Nord Theme](https://img.shields.io/badge/theme-nord-88c0d0?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIGZpbGw9IiNkOGRlZTkiPjxwYXRoIGlkPSdhJyBkPSdtMTAuMyAyLjUgMTEgMTQuM3Y0TDkgNC44SDIuNXYyMi40aDExbDIgMi4zSDB2LTI3eicgdHJhbnNmb3JtPSdzY2FsZSgwLjQzKScvPjx1c2UgaHJlZj0nI2EnIHRyYW5zZm9ybT0ncm90YXRlKDE4MCA3IDcpJy8+PC9zdmc+&colorA=4c566a&colorB=88c0d0)
+[![Powered by ~ daze](https://img.shields.io/badge/powered_by-daze-678eed?style=for-the-badge&logo=laravelhorizon&labelColor=4c566a)][daze]
 
 ![Lua](https://img.shields.io/badge/lua-2C2D72?style=flat-square&logo=lua&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/typescript-3178C6?style=flat-square&logo=typescript&logoColor=white)
@@ -57,6 +58,8 @@ a more enjoyable coding experience
 <!-- prettier-ignore-end -->
 
 <!-- ALL-CONTRIBUTORS-LIST:END -->
+
+[daze]: https://github.com/nvimtools/config/tree/daze
 
 ---
 
