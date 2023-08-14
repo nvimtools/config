@@ -91,7 +91,8 @@ return {
 					},
 				},
 				separator_style = "thin",
-				style_preset = require("bufferline").style_preset.minimal,
+				tab_size = 12,
+				style_preset = 2, -- minimal
 				buffer_close_icon = "󰖭",
 				close_icon = "󰅙 ",
 				modified_icon = "󰛿",
