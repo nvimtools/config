@@ -74,7 +74,7 @@ return {
 					require("mini.bufremove").delete(n, false)
 				end,
 				diagnostics = "nvim_lsp",
-				always_show_bufferline = false,
+				always_show_bufferline = true,
 				diagnostics_indicator = function(_, _, diag)
 					local icons = require("lazyvim.config").icons.diagnostics
 					local ret = (diag.error and icons.Error .. diag.error .. " " or "")
@@ -87,8 +87,16 @@ return {
 						text = "File Explorer",
 						highlight = "Directory",
 						text_align = "left",
+						separator = true,
 					},
 				},
+				separator_style = "thin",
+				style_preset = require("bufferline").style_preset.minimal,
+				buffer_close_icon = "󰖭",
+				close_icon = "󰅙 ",
+				modified_icon = "󰛿",
+				left_trunc_marker = "󰄽",
+				right_trunc_marker = "󰄾",
 			},
 		},
 	},
@@ -106,26 +114,18 @@ return {
 					theme = "auto",
 					globalstatus = true,
 					disabled_filetypes = { statusline = { "dashboard", "alpha" } },
+					component_separators = { left = "", right = "" },
+					section_separators = { left = "", right = "" },
 				},
 				sections = {
 					lualine_a = { "mode" },
-					lualine_b = { "branch" },
+					lualine_b = { { "branch", icon = icons.git.branch } },
 					lualine_c = {
-						{
-							"diagnostics",
-							symbols = {
-								error = icons.diagnostics.Error,
-								warn = icons.diagnostics.Warn,
-								info = icons.diagnostics.Info,
-								hint = icons.diagnostics.Hint,
-							},
-						},
 						{ "filetype", icon_only = true, separator = "", padding = { left = 1, right = 0 } },
-						{ "filename", path = 1, symbols = { modified = "  ", readonly = "", unnamed = "" } },
+						{ "filename", path = 1, symbols = { modified = "󰛿 ", readonly = "", unnamed = "" } },
 						{
-							function()
-								return require("nvim-navic").get_location()
-							end,
+							"navic",
+							color_correction = "static",
 							cond = function()
 								return package.loaded["nvim-navic"] and require("nvim-navic").is_available()
 							end,
@@ -174,16 +174,24 @@ return {
 						},
 					},
 					lualine_y = {
+						{
+							"diagnostics",
+							symbols = {
+								error = icons.diagnostics.Error,
+								warn = icons.diagnostics.Warn,
+								info = icons.diagnostics.Info,
+								hint = icons.diagnostics.Hint,
+							},
+						},
+						{ "encoding" },
+						{ "fileformat", icons_enabled = false },
+					},
+					lualine_z = {
 						{ "progress", separator = " ", padding = { left = 1, right = 0 } },
 						{ "location", padding = { left = 0, right = 1 } },
 					},
-					lualine_z = {
-						function()
-							return " " .. os.date("%R")
-						end,
-					},
 				},
-				extensions = { "neo-tree", "lazy" },
+				extensions = { "neo-tree", "lazy", "trouble", "toggleterm", "man" },
 			}
 		end,
 	},
@@ -405,7 +413,7 @@ return {
 				callback = function()
 					local stats = require("lazy").stats()
 					local ms = (math.floor(stats.startuptime * 100 + 0.5) / 100)
-					dashboard.section.footer.val = "⚡ Neovim loaded " .. stats.count .. " plugins in " .. ms .. "ms"
+					dashboard.section.footer.val = "Neovim loaded " .. stats.count .. " plugins in " .. ms .. "ms"
 					pcall(vim.cmd.AlphaRedraw)
 				end,
 			})
@@ -428,9 +436,9 @@ return {
 		end,
 		opts = function()
 			return {
-				separator = " ",
+				separator = " 󰅂 ",
 				highlight = true,
-				depth_limit = 5,
+				depth_limit = 8,
 				icons = require("lazyvim.config").icons.kinds,
 			}
 		end,
@@ -441,4 +449,25 @@ return {
 
 	-- ui components
 	{ "MunifTanjim/nui.nvim", lazy = true },
+
+	-- terminal
+
+	{
+		{
+			"akinsho/toggleterm.nvim",
+			config = function(_, opts)
+				require("toggleterm").setup(opts)
+			end,
+			---@type ToggleTermConfig|{}
+			opts = {
+				open_mapping = "<c-`>",
+				autochdir = true,
+				shade_terminals = false,
+			},
+			cmd = "ToggleTerm",
+			keys = {
+				"<c-`>",
+			},
+		},
+	},
 }
