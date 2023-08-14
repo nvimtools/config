@@ -4,7 +4,6 @@ return {
 		opts = function(_, opts)
 			opts.highlight.disable = {
 				"c",
-				"lua",
 			}
 			vim.list_extend(opts.ensure_installed, {
 				"jsonnet",

@@ -1,44 +1,4 @@
 return {
-
-	{ -- colorscheme
-		{
-			"gbprod/nord.nvim",
-			opts = {
-				transparent = false,
-				borders = true,
-				errors = { mode = "fg" },
-				on_highlights = function(highlights, _)
-					for group, highlight in pairs(highlights) do
-						if vim.startswith(group, "CmpItemKind") then
-							highlight["reverse"] = true
-							highlight["blend"] = 0
-						end
-					end
-				end,
-			},
-			module = true,
-			lazy = true,
-			-- priority = 1000,
-		},
-		{
-			"nvimtools/daze",
-			opts = {
-				colorscheme = "nord",
-			},
-		},
-
-		{ -- disable builtin ones
-			{
-				"folke/tokyonight.nvim",
-				enabled = false,
-			},
-			{
-				"catppuccin",
-				enabled = false,
-			},
-		},
-	},
-
 	{ -- sidepanels
 		{
 			"akinsho/bufferline.nvim",
