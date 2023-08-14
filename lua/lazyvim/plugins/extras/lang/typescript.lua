@@ -43,6 +43,7 @@ return {
 						},
 					},
 				},
+				denols = {},
 			},
 			setup = {
 				tsserver = function(_, opts)
