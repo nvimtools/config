@@ -46,7 +46,7 @@ return {
 		},
 	},
 	{ -- null-ls
-		"jose-elias-alvarez/null-ls.nvim",
+		"nvimtools/none-ls.nvim",
 		dependencies = {
 			"ThePrimeagen/refactoring.nvim",
 		},
