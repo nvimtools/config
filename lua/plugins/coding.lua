@@ -1,5 +1,4 @@
 return {
-	{ "editorconfig/editorconfig-vim" },
 	{ "wakatime/vim-wakatime" },
 	-- diff
 	{
