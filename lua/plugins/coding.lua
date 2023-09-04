@@ -10,6 +10,10 @@ return {
 			"akinsho/git-conflict.nvim",
 			opts = {
 				disable_diagnostics = true,
+				default_mappings = {
+					prev = "[x",
+					next = "]x",
+				},
 			},
 		},
 	},
