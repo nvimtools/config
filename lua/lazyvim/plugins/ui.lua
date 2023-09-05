@@ -203,6 +203,10 @@ return {
 		branch = "v3",
 		event = { "BufReadPost", "BufNewFile" },
 		opts = {
+			indent = {
+				char = "▏",
+				tab_char = "▏",
+			},
 			exclude = {
 				buftypes = {
 					"terminal",
@@ -230,7 +234,6 @@ return {
 					"",
 				},
 			},
-			show_current_context = false,
 		},
 		config = function(_, opts)
 			require("ibl").setup(opts)
