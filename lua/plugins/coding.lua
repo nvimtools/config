@@ -162,7 +162,6 @@ return {
 				"zR",
 				function()
 					require("ufo").openAllFolds()
-					require("indent_blankline").refresh(false)
 				end,
 				mode = "n",
 				desc = "Open all folds",
@@ -171,7 +170,6 @@ return {
 				"zM",
 				function()
 					require("ufo").closeAllFolds()
-					require("indent_blankline").refresh(false)
 				end,
 				mode = "n",
 				desc = "Close all folds",
@@ -180,7 +178,6 @@ return {
 				"zr",
 				function()
 					require("ufo").openFoldsExceptKinds()
-					require("indent_blankline").refresh(false)
 				end,
 				mode = "n",
 				desc = "Fold less",
@@ -189,7 +186,6 @@ return {
 				"zm",
 				function(level)
 					require("ufo").closeFoldsWith(level)
-					require("indent_blankline").refresh(false)
 				end,
 				mode = "n",
 				desc = "Fold more",
