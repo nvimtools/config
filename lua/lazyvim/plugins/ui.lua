@@ -232,6 +232,9 @@ return {
 			},
 			show_current_context = false,
 		},
+		config = function(_, opts)
+			require("ibl").setup(opts)
+		end,
 	},
 
 	-- noicer ui
