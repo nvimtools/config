@@ -1,6 +1,5 @@
 return {
 	"hrsh7th/nvim-cmp",
-	commit = "6c84bc75c64f778e9f1dcb798ed41c7fcb93b639", -- https://github.com/hrsh7th/nvim-cmp/pull/1691
 	dependencies = {
 		{
 			"jcdickinson/codeium.nvim",
