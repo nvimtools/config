@@ -41,7 +41,7 @@ return {
 				require("lazyvim.util").on_attach(function(client)
 					if client.name == "eslint" then
 						client.server_capabilities.documentFormattingProvider = true
-					elseif client.name == "tsserver" then
+					elseif client.name == "tsserver" or client.name == "biome" then
 						client.server_capabilities.documentFormattingProvider = false
 					end
 				end)
@@ -82,6 +82,8 @@ return {
 	{ -- language specific settings
 		{ import = "lazyvim.plugins.extras.lang.typescript" },
 		{ import = "lazyvim.plugins.extras.linting.eslint" },
+		{ import = "lazyvim.plugins.extras.formatting.biome" },
+
 		{ import = "lazyvim.plugins.extras.lang.tailwind" },
 
 		{ import = "lazyvim.plugins.extras.lang.go" },
