@@ -13,51 +13,44 @@ return {
 	-- correctly setup lspconfig
 	{
 		"neovim/nvim-lspconfig",
-		dependencies = { "jose-elias-alvarez/typescript.nvim" },
+		dependencies = {
+			{
+				"pmizio/typescript-tools.nvim",
+				dependencies = { "nvim-lua/plenary.nvim" },
+			},
+		},
 		opts = {
 			-- make sure mason installs the server
 			servers = {
-				---@type lspconfig.options.tsserver
 				tsserver = {
-					keys = {
-						{ "<leader>co", "<cmd>TypescriptOrganizeImports<CR>", desc = "Organize Imports" },
-						{ "<leader>cR", "<cmd>TypescriptRenameFile<CR>", desc = "Rename File" },
-					},
 					settings = {
-						typescript = {
-							format = {
-								indentSize = vim.o.shiftwidth,
-								convertTabsToSpaces = vim.o.expandtab,
-								tabSize = vim.o.tabstop,
-							},
+						expose_as_code_action = "all",
+						tsserver_file_preferences = {
+							includeInlayParameterNameHints = "literals",
+							includeInlayFunctionParameterTypeHints = true,
+							includeInlayVariableTypeHints = true,
+							includeInlayPropertyDeclarationTypeHints = true,
+							includeInlayFunctionLikeReturnTypeHints = true,
+							includeInlayEnumMemberValueHints = true,
+							includeCompletionsForModuleExports = true,
+							importModuleSpecifierEnding = "minimal",
+							quotePreference = "single",
 						},
-						javascript = {
-							format = {
-								indentSize = vim.o.shiftwidth,
-								convertTabsToSpaces = vim.o.expandtab,
-								tabSize = vim.o.tabstop,
-							},
+						tsserver_format_preferences = {
+							semicolons = "remove",
+							insertSpaceBeforeFunctionParenthesis = true,
 						},
-						completions = {
-							completeFunctionCalls = true,
-						},
+						complete_function_calls = true,
 					},
 				},
 				denols = {},
 			},
 			setup = {
 				tsserver = function(_, opts)
-					require("typescript").setup({ server = opts })
-					return true
+					require("typescript-tools").setup(opts)
 				end,
 			},
 		},
-	},
-	{
-		"nvimtools/none-ls.nvim",
-		opts = function(_, opts)
-			table.insert(opts.sources, require("typescript.extensions.null-ls.code-actions"))
-		end,
 	},
 	{
 		"mfussenegger/nvim-dap",
