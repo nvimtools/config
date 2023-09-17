@@ -12,43 +12,42 @@ return {
 
 	-- correctly setup lspconfig
 	{
-		"neovim/nvim-lspconfig",
-		dependencies = {
-			{
-				"pmizio/typescript-tools.nvim",
-				dependencies = { "nvim-lua/plenary.nvim" },
+		"pmizio/typescript-tools.nvim",
+		opts = {
+
+			settings = {
+				expose_as_code_action = "all",
+				tsserver_file_preferences = {
+					includeInlayParameterNameHints = "literals",
+					includeInlayFunctionParameterTypeHints = true,
+					includeInlayVariableTypeHints = true,
+					includeInlayPropertyDeclarationTypeHints = true,
+					includeInlayFunctionLikeReturnTypeHints = true,
+					includeInlayEnumMemberValueHints = true,
+					includeCompletionsForModuleExports = true,
+					importModuleSpecifierEnding = "minimal",
+					quotePreference = "single",
+				},
+				tsserver_format_preferences = {
+					semicolons = "remove",
+					insertSpaceBeforeFunctionParenthesis = true,
+				},
+				complete_function_calls = true,
 			},
 		},
-		opts = {
-			-- make sure mason installs the server
-			servers = {
-				tsserver = {
-					settings = {
-						expose_as_code_action = "all",
-						tsserver_file_preferences = {
-							includeInlayParameterNameHints = "literals",
-							includeInlayFunctionParameterTypeHints = true,
-							includeInlayVariableTypeHints = true,
-							includeInlayPropertyDeclarationTypeHints = true,
-							includeInlayFunctionLikeReturnTypeHints = true,
-							includeInlayEnumMemberValueHints = true,
-							includeCompletionsForModuleExports = true,
-							importModuleSpecifierEnding = "minimal",
-							quotePreference = "single",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			{
+				"neovim/nvim-lspconfig",
+				opts = {
+					-- make sure mason installs the server
+					servers = {
+						tsserver = {
+							enabled = false,
 						},
-						tsserver_format_preferences = {
-							semicolons = "remove",
-							insertSpaceBeforeFunctionParenthesis = true,
-						},
-						complete_function_calls = true,
+						denols = {},
 					},
 				},
-				denols = {},
-			},
-			setup = {
-				tsserver = function(_, opts)
-					require("typescript-tools").setup(opts)
-				end,
 			},
 		},
 	},
