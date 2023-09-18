@@ -50,6 +50,7 @@ return {
 				},
 			},
 		},
+		event = "VeryLazy",
 	},
 	{
 		"mfussenegger/nvim-dap",
