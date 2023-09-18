@@ -110,6 +110,7 @@ return {
 		{ import = "lazyvim.plugins.extras.lang.yuck" },
 
 		{ import = "lazyvim.plugins.extras.lang.markdown" },
+		{ import = "lazyvim.plugins.extras.linting.ltex" },
 	},
 	{ -- debug adapter
 		{ import = "lazyvim.plugins.extras.dap.core" },
