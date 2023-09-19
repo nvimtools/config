@@ -2,13 +2,9 @@ return {
 	"hrsh7th/nvim-cmp",
 	dependencies = {
 		{
-			"jcdickinson/codeium.nvim",
+			"Exafunction/codeium.nvim",
 			event = "VeryLazy",
 			dependencies = {
-				{
-					"jcdickinson/http.nvim",
-					build = "cargo build --workspace --release",
-				},
 				"nvim-lua/plenary.nvim",
 			},
 			config = function()
