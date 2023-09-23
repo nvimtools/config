@@ -20,15 +20,19 @@ return {
 		opts = {
 			servers = {
 				ltex = {
-					language = vim.env.LANGUAGETOOL_LANG or "en-US",
-					additionalRules = {
-						enablePickyRules = true,
-						motherTongue = vim.env.LANGUAGETOOL_MOTHERTONGUE,
-					},
-					languageToolHttpServerUri = vim.env.LANGUAGETOOL_ENDPOINT,
-					languageToolOrg = {
-						username = vim.env.LANGUAGETOOL_USERNAME,
-						apiKey = vim.env.LANGUAGETOOL_APIKEY,
+					settings = {
+						ltex = {
+							language = vim.env.LANGUAGETOOL_LANG or "en-US",
+							additionalRules = {
+								enablePickyRules = true,
+								motherTongue = vim.env.LANGUAGETOOL_MOTHERTONGUE,
+							},
+							languageToolHttpServerUri = vim.env.LANGUAGETOOL_ENDPOINT,
+							languageToolOrg = {
+								username = vim.env.LANGUAGETOOL_USERNAME,
+								apiKey = vim.env.LANGUAGETOOL_APIKEY,
+							},
+						},
 					},
 				},
 			},
