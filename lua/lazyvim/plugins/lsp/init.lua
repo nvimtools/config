@@ -198,6 +198,14 @@ return {
 					return not is_deno(root_dir)
 				end)
 			end
+
+			if Util.lsp_get_config("biome") and Util.lsp_get_config("eslint") then
+				local is_biome = require("lspconfig.util").root_pattern("biome.json", "rome.json")
+				Util.lsp_disable("eslint", is_biome)
+				Util.lsp_disable("biome", function(root_dir)
+					return not is_biome(root_dir)
+				end)
+			end
 		end,
 	},
 
