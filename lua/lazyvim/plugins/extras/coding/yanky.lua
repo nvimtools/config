@@ -8,14 +8,8 @@ return {
 			local mappings = mapping.get_defaults()
 			mappings.i["<c-p>"] = nil
 			return {
-				highlight = { timer = 200 },
+				highlight = { timer = 250 },
 				ring = { storage = jit.os:find("Windows") and "shada" or "sqlite" },
-				picker = {
-					telescope = {
-						use_default_mappings = false,
-						mappings = mappings,
-					},
-				},
 			}
 		end,
 		keys = {
