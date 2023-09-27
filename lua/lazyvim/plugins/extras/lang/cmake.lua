@@ -14,6 +14,7 @@ return {
 			opts.sources = opts.sources or {}
 			vim.list_extend(opts.sources, {
 				nls.builtins.diagnostics.cmake_lint,
+				nls.builtins.formatting.cmake_format,
 			})
 		end,
 	},
