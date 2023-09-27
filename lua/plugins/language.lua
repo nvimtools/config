@@ -72,7 +72,6 @@ return {
 				nls.builtins.diagnostics.rpmspec,
 
 				nls.builtins.hover.dictionary,
-				nls.builtins.diagnostics.editorconfig_checker,
 
 				nls.builtins.code_actions.refactoring,
 			})
@@ -137,7 +136,6 @@ return {
 		opts = function(_, opts)
 			vim.list_extend(opts.ensure_installed, {
 				-- misc
-				"editorconfig-checker",
 				"actionlint",
 				-- "commitlint",
 			})
