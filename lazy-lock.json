@@ -21,7 +21,7 @@
   "hardtime.nvim": { "branch": "main", "commit": "3d98663dbd2ed51a3be97e50dfe7df6c26d62d8d" },
   "haskell-tools.nvim": { "branch": "2.x.x", "commit": "b19df600da8ef5fb4fb280815415ebd2a4228f0f" },
   "indent-blankline.nvim": { "branch": "v3", "commit": "b9b0e7c3fcfdad9860d43321eddc9b4f06d7fdd7" },
-  "lazy.nvim": { "branch": "main", "commit": "2a9354c7d2368d78cbd5575a51a2af5bd8a6ad01" },
+  "lazy.nvim": { "branch": "main", "commit": "7ca3bdb566c3ba4492f2d22b37c2c9e26f09470f" },
   "ltex-utils.nvim": { "branch": "main", "commit": "8c6ef83d5ba059725265825f72a329757216991c" },
   "lualine.nvim": { "branch": "master", "commit": "45e27ca739c7be6c49e5496d14fcf45a303c3a63" },
   "markdown-preview.nvim": { "branch": "master", "commit": "02cc3874738bc0f86e4b91f09b8a0ac88aef8e96" },
