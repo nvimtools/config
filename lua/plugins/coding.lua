@@ -148,12 +148,9 @@ return {
 		end,
 		keys = {
 			{
-				"zK",
+				"Z",
 				function()
-					local winid = require("ufo").peekFoldedLinesUnderCursor()
-					if not winid then
-						vim.lsp.buf.hover()
-					end
+					require("ufo").peekFoldedLinesUnderCursor()
 				end,
 				mode = "n",
 				desc = "Hover",
