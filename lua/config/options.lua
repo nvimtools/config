@@ -11,8 +11,6 @@ opt.shiftwidth = 0
 -- opt.colorcolumn:append("80")
 opt.colorcolumn:append("120")
 
-opt.mousemoveevent = true
-
 opt.guifont = "monospace,emoji,Noto Sans Mono CJK TC,Noto Sans Mono CJK JP:h10"
 vim.g.neovide_cursor_vfx_mode = "pixiedust"
 
