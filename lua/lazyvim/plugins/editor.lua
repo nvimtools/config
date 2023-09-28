@@ -105,7 +105,10 @@ return {
 		},
 	},
 
-	-- fuzzy finder
+	-- Fuzzy finder.
+	-- The default key bindings to find files will use Telescope's
+	-- `find_files` or `git_files` depending on whether the
+	-- directory is a git repo.
 	{
 		"nvim-telescope/telescope.nvim",
 		commit = vim.fn.has("nvim-0.9.0") == 0 and "057ee0f8783" or nil,
@@ -165,6 +168,8 @@ return {
 						"Trait",
 						"Field",
 						"Property",
+						"Enum",
+						"Constant",
 					},
 				}),
 				desc = "Goto Symbol",
@@ -183,6 +188,8 @@ return {
 						"Trait",
 						"Field",
 						"Property",
+						"Enum",
+						"Constant",
 					},
 				}),
 				desc = "Goto Symbol (Workspace)",
