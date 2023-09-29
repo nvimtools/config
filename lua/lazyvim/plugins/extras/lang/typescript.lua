@@ -20,10 +20,10 @@ return {
 				tsserver_file_preferences = {
 					includeInlayParameterNameHints = "literals",
 					includeInlayFunctionParameterTypeHints = true,
-					includeInlayVariableTypeHints = true,
-					includeInlayPropertyDeclarationTypeHints = true,
+					includeInlayVariableTypeHints = false,
+					includeInlayPropertyDeclarationTypeHints = false,
 					includeInlayFunctionLikeReturnTypeHints = true,
-					includeInlayEnumMemberValueHints = true,
+					includeInlayEnumMemberValueHints = false,
 					includeCompletionsForModuleExports = true,
 					importModuleSpecifierEnding = "minimal",
 					quotePreference = "single",
