@@ -12,6 +12,7 @@ return {
 						highlight["blend"] = 0
 					end
 				end
+				highlights["LspInlayHint"] = { fg = require("nord.colors").palette.polar_night.light }
 			end,
 		},
 		lazy = true,
