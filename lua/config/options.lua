@@ -6,7 +6,7 @@ local opt = vim.opt
 
 opt.expandtab = false
 opt.tabstop = 4
-opt.shiftwidth = 0
+opt.shiftwidth = nil
 
 -- opt.colorcolumn:append("80")
 opt.colorcolumn:append("120")
