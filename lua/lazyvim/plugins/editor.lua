@@ -77,6 +77,32 @@ return {
 			},
 		},
 		config = function(_, opts)
+			opts.event_handlers = opts.event_handlers or {}
+
+			local function on_move(data)
+				local clients = vim.lsp.get_active_clients()
+				for _, client in ipairs(clients) do
+					if client:supports_method("workspace/willRenameFiles") then
+						local resp = client.request_sync("workspace/willRenameFiles", {
+							files = {
+								{
+									oldUri = vim.uri_from_fname(data.source),
+									newUri = vim.uri_from_fname(data.destination),
+								},
+							},
+						}, 1000)
+						if resp and resp.result ~= nil then
+							vim.lsp.util.apply_workspace_edit(resp.result, client.offset_encoding)
+						end
+					end
+				end
+			end
+
+			local events = require("neo-tree.events")
+			vim.list_extend(opts.event_handlers, {
+				{ event = events.FILE_MOVED, handler = on_move },
+				{ event = events.FILE_RENAMED, handler = on_move },
+			})
 			require("neo-tree").setup(opts)
 			vim.api.nvim_create_autocmd("TermClose", {
 				pattern = "*lazygit",
@@ -254,30 +280,6 @@ return {
 			},
 		},
 	},
-
-	-- disable old installations of leap and flit. Optional so it doesn't appear under disabled plugins
-	{
-		"ggandor/leap.nvim",
-		enabled = function()
-			vim.schedule(function()
-				local Config = require("lazy.core.config")
-				if Config.spec.disabled["leap.nvim"] or Config.spec.disabled["flit.nvim"] then
-					require("lazy.core.util").warn(
-						[[`flash.nvim` is now the default **LazyVim** jump plugin.
-**leap.nvim** and **flit.nvim** have been disabled.
-Please remove the plugins from your config.
-If you rather use leap/flit instead, you can add the leap extra:
-`lazyvim.plugins.extras.editor.leap`
-]],
-						{ title = "LazyVim" }
-					)
-				end
-			end)
-			return false
-		end,
-		optional = true,
-	},
-	{ "ggandor/flit.nvim", enabled = false, optional = true },
 
 	-- Flash enhances the built-in search functionality by showing labels
 	-- at the end of each match, letting you quickly jump to a specific
