@@ -78,6 +78,8 @@ local defaults = {
 
 M.renames = {
 	["windwp/nvim-spectre"] = "nvim-pack/nvim-spectre",
+	["jose-elias-alvarez/null-ls.nvim"] = "nvimtools/none-ls.nvim",
+	["null-ls.nvim"] = "none-ls.nvim",
 }
 
 ---@type LazyVimConfig
@@ -97,10 +99,12 @@ function M.setup(opts)
 		error("Exiting")
 	end
 
+	-- autocmds can be loaded lazily when not opening a file
 	local lazy_autocmds = vim.fn.argc(-1) == 0
 	if not lazy_autocmds then
 		M.load("autocmds")
 	end
+
 	vim.api.nvim_create_autocmd("User", {
 		group = vim.api.nvim_create_augroup("LazyVim", { clear = true }),
 		pattern = "VeryLazy",
@@ -178,6 +182,14 @@ function M.init()
 		local add = Plugin.Spec.add
 		Plugin.Spec.add = function(self, plugin, ...)
 			if type(plugin) == "table" and M.renames[plugin[1]] then
+				require("lazy.core.util").warn(
+					("Plugin `%s` was renamed to `%s`.\nPlease update your config for `%s`"):format(
+						plugin[1],
+						M.renames[plugin[1]],
+						self.importing or "LazyVim"
+					),
+					{ title = "LazyVim" }
+				)
 				plugin[1] = M.renames[plugin[1]]
 			end
 			return add(self, plugin, ...)

@@ -234,9 +234,7 @@ return {
 				},
 			},
 		},
-		config = function(_, opts)
-			require("ibl").setup(opts)
-		end,
+		main = "ibl",
 	},
 
 	-- Displays a popup with possible key bindings of the command you started typing

@@ -90,8 +90,6 @@ return {
 				vim.list_extend(opts.sources, {
 					nls.builtins.code_actions.gomodifytags,
 					nls.builtins.code_actions.impl,
-					nls.builtins.formatting.gofumpt,
-					nls.builtins.formatting.goimports_reviser,
 				})
 			end
 		end,
@@ -104,10 +102,7 @@ return {
 				"mason.nvim",
 				opts = function(_, opts)
 					opts.ensure_installed = opts.ensure_installed or {}
-					vim.list_extend(
-						opts.ensure_installed,
-						{ "gomodifytags", "impl", "gofumpt", "goimports-reviser", "delve" }
-					)
+					vim.list_extend(opts.ensure_installed, { "gomodifytags", "impl", "delve" })
 				end,
 			},
 			{

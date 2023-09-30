@@ -5,6 +5,10 @@ local M = {}
 ---@type PluginLspOpts
 M.opts = nil
 
+-- Allow plugins to set a custom formatter for a buffer.
+---@type fun(bufnr:number):boolean
+M.custom_format = nil
+
 function M.enabled()
 	return M.opts.autoformat
 end
@@ -27,6 +31,15 @@ end
 function M.format(opts)
 	local buf = vim.api.nvim_get_current_buf()
 	if vim.b.autoformat == false and not (opts and opts.force) then
+		return
+	end
+
+	if
+		M.custom_format
+		and Util.try(function()
+			return M.custom_format(buf)
+		end, { msg = "Custom formatter failed" })
+	then
 		return
 	end
 
