@@ -10,12 +10,22 @@ return {
 		end,
 	},
 	{
-		"williamboman/mason.nvim",
+		"nvimtools/none-ls.nvim",
 		opts = function(_, opts)
-			vim.list_extend(opts.ensure_installed, {
-				"elixir-ls",
+			local nls = require("null-ls")
+			opts.sources = opts.sources or {}
+			vim.list_extend(opts.sources, {
+				nls.builtins.diagnostics.credo,
 			})
 		end,
+	},
+	{
+		"neovim/nvim-lspconfig",
+		opts = {
+			servers = {
+				elixirls = {},
+			},
+		},
 	},
 	{
 		"nvim-neotest/neotest",
