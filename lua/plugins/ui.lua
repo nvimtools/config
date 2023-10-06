@@ -16,7 +16,7 @@ return {
 						reveal = { "close" },
 					}
 				end
-				options.highlights = require("nord.plugins.bufferline").akinsho()
+				opts.highlights = require("nord.plugins.bufferline").akinsho()
 			end,
 		},
 	},
@@ -37,12 +37,12 @@ return {
 
 				dashboard.section.header.val = blackheart
 				dashboard.section.buttons.val = {
-					dashboard.button(" f ", "󰱼 " .. " Find file", ":Telescope find_files <CR>"),
-					dashboard.button(" n ", "󱪝 " .. " New file", ":ene <BAR> startinsert <CR>"),
-					dashboard.button(" r ", "󰋚 " .. " Recent files", ":Telescope oldfiles <CR>"),
-					dashboard.button(" g ", "󰈞 " .. " Find text", ":Telescope live_grep <CR>"),
-					dashboard.button(" c ", "󱁻 " .. " Config", ":e $MYVIMRC <CR>"),
-					dashboard.button(" q ", "󰈆 " .. " Quit", ":qa<CR>"),
+					dashboard.button(" f ", "󰱼 " .. " Find file", "<cmd> Telescope find_files <cr>"),
+					dashboard.button(" n ", "󱪝 " .. " New file", "<cmd> ene <BAR> startinsert <cr>"),
+					dashboard.button(" r ", "󰋚 " .. " Recent files", "<cmd> Telescope oldfiles <cr>"),
+					dashboard.button(" g ", "󰈞 " .. " Find text", "<cmd> Telescope live_grep <cr>"),
+					dashboard.button(" c ", "󱁻 " .. " Config", "<cmd> e $MYVIMRC <cr>"),
+					dashboard.button(" q ", "󰈆 " .. " Quit", "<cmd> qa<cr>"),
 				}
 				local c = require("nord.colors")
 				vim.api.nvim_set_hl(0, "AlphaHeader", { fg = c.palette.snow_storm.brightest, bold = true })
