@@ -1,9 +1,9 @@
----@type LazyVimConfig
+---@class LazyVimConfig: LazyVimOptions
 local M = {}
 
 M.lazy_version = ">=9.1.0"
 
----@class LazyVimConfig
+---@class LazyVimOptions
 local defaults = {
 	-- colorscheme can be a string like `catppuccin` or a function that will load the colorscheme
 	---@type string|fun()
@@ -17,6 +17,9 @@ local defaults = {
 	},
 	-- icons used by other plugins
 	icons = {
+		misc = {
+			dots = "󰇘",
+		},
 		dap = {
 			Stopped = { "󰁔 ", "DiagnosticWarn", "DapStoppedLine" },
 			Breakpoint = "󰐾 ",
@@ -82,12 +85,12 @@ M.renames = {
 	["null-ls.nvim"] = "none-ls.nvim",
 }
 
----@type LazyVimConfig
+---@type LazyVimOptions
 local options
 
----@param opts? LazyVimConfig
+---@param opts? LazyVimOptions
 function M.setup(opts)
-	options = vim.tbl_deep_extend("force", defaults, opts or {})
+	options = vim.tbl_deep_extend("force", defaults, opts or {}) or {}
 
 	if vim.fn.has("nvim-0.9.0") == 0 then
 		vim.api.nvim_echo({
@@ -120,8 +123,9 @@ function M.setup(opts)
 		M.load("autocmds")
 	end
 
+	local group = vim.api.nvim_create_augroup("LazyVim", { clear = true })
 	vim.api.nvim_create_autocmd("User", {
-		group = vim.api.nvim_create_augroup("LazyVim", { clear = true }),
+		group = group,
 		pattern = "VeryLazy",
 		callback = function()
 			if lazy_autocmds then
@@ -130,6 +134,8 @@ function M.setup(opts)
 			M.load("keymaps")
 		end,
 	})
+
+	M.lazy_file()
 
 	require("lazy.core.util").try(function()
 		if type(M.colorscheme) == "function" then
@@ -142,6 +148,41 @@ function M.setup(opts)
 		on_error = function(msg)
 			require("lazy.core.util").error(msg)
 			vim.cmd.colorscheme("habamax")
+		end,
+	})
+end
+
+-- Properly load file based plugins without blocking the UI
+function M.lazy_file()
+	local events = {} ---@type {event: string, pattern?: string, buf: number, data?: any}[]
+
+	local function load()
+		if #events == 0 then
+			return
+		end
+		vim.api.nvim_del_augroup_by_name("lazy_file")
+		vim.api.nvim_exec_autocmds("User", { pattern = "LazyFile", modeline = false })
+		for _, event in ipairs(events) do
+			vim.api.nvim_exec_autocmds(event.event, {
+				pattern = event.pattern,
+				modeline = false,
+				buffer = event.buf,
+				data = { lazy_file = true },
+			})
+		end
+		vim.api.nvim_exec_autocmds("CursorMoved", { modeline = false })
+		events = {}
+	end
+
+	-- schedule wrap so that nested autocmds are executed
+	-- and the UI can continue rendering without blocking
+	load = vim.schedule_wrap(load)
+
+	vim.api.nvim_create_autocmd({ "BufReadPost", "BufWritePost", "BufNewFile" }, {
+		group = vim.api.nvim_create_augroup("lazy_file", { clear = true }),
+		callback = function(event)
+			table.insert(events, event)
+			load()
 		end,
 	})
 end
@@ -186,6 +227,7 @@ M.did_init = false
 function M.init()
 	if not M.did_init then
 		M.did_init = true
+		vim.opt.rtp:append(require("lazy.core.config").spec.plugins.daze.dir)
 		-- delay notifications till vim.notify was replaced or after 500ms
 		require("lazyvim.util").lazy_notify()
 
@@ -195,6 +237,7 @@ function M.init()
 		require("lazyvim.config").load("options")
 		local Plugin = require("lazy.core.plugin")
 		local add = Plugin.Spec.add
+		---@diagnostic disable-next-line: duplicate-set-field
 		Plugin.Spec.add = function(self, plugin, ...)
 			if type(plugin) == "table" and M.renames[plugin[1]] then
 				require("lazy.core.util").warn(
@@ -208,6 +251,14 @@ function M.init()
 				plugin[1] = M.renames[plugin[1]]
 			end
 			return add(self, plugin, ...)
+		end
+
+		-- Add support for the LazyFile event
+		local Event = require("lazy.core.handler.event")
+		local _event = Event._event
+		---@diagnostic disable-next-line: duplicate-set-field
+		Event._event = function(self, value)
+			return value == "LazyFile" and "User LazyFile" or _event(self, value)
 		end
 	end
 end

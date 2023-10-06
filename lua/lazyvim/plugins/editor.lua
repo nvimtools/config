@@ -359,7 +359,7 @@ return {
 			defaults = {
 				mode = { "n", "v" },
 				["g"] = { name = "+goto" },
-				["gz"] = { name = "+surround" },
+				["gs"] = { name = "+surround" },
 				["]"] = { name = "+next" },
 				["["] = { name = "+prev" },
 				["<leader><tab>"] = { name = "+tabs" },
@@ -387,7 +387,7 @@ return {
 	-- hunks in a commit.
 	{
 		"lewis6991/gitsigns.nvim",
-		event = { "BufReadPre", "BufNewFile" },
+		event = "LazyFile",
 		opts = {
 			signs = {
 				add = { text = "▎" },
@@ -429,7 +429,7 @@ return {
 	-- instances.
 	{
 		"RRethy/vim-illuminate",
-		event = { "BufReadPost", "BufNewFile" },
+		event = "LazyFile",
 		opts = {
 			delay = 200,
 			large_file_cutoff = 2000,
@@ -531,7 +531,7 @@ return {
 	{
 		"folke/todo-comments.nvim",
 		cmd = { "TodoTrouble", "TodoTelescope" },
-		event = { "BufReadPost", "BufNewFile" },
+		event = "LazyFile",
 		config = true,
 		keys = {
 			{

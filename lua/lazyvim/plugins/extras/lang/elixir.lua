@@ -12,6 +12,9 @@ return {
 	{
 		"nvimtools/none-ls.nvim",
 		opts = function(_, opts)
+			if vim.fn.executable("credo") == 0 then
+				return
+			end
 			local nls = require("null-ls")
 			opts.sources = opts.sources or {}
 			vim.list_extend(opts.sources, {
