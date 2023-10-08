@@ -3,13 +3,12 @@ return {
 	dependencies = {
 		{
 			"Exafunction/codeium.nvim",
-			event = "VeryLazy",
 			dependencies = {
 				"nvim-lua/plenary.nvim",
 			},
-			config = function()
-				require("codeium").setup({})
-			end,
+			cmd = "Codeium",
+			build = ":Codeium Auth",
+			opts = {},
 		},
 	},
 	---@param opts cmp.ConfigSchema

@@ -380,11 +380,13 @@ return {
 			return dashboard
 		end,
 		config = function(_, dashboard)
+			local laststatus = vim.o.laststatus
 			vim.o.laststatus = 0
 			-- close Lazy and re-open when the dashboard is ready
 			if vim.o.filetype == "lazy" then
 				vim.cmd.close()
 				vim.api.nvim_create_autocmd("User", {
+					once = true,
 					pattern = "AlphaReady",
 					callback = function()
 						require("lazy").show()
@@ -392,9 +394,18 @@ return {
 				})
 			end
 
+			vim.api.nvim_create_autocmd("BufUnload", {
+				once = true,
+				buffer = vim.api.nvim_get_current_buf(),
+				callback = function()
+					vim.opt.laststatus = laststatus
+				end,
+			})
+
 			require("alpha").setup(dashboard.opts)
 
 			vim.api.nvim_create_autocmd("User", {
+				once = true,
 				pattern = "LazyVimStarted",
 				callback = function()
 					local stats = require("lazy").stats()
@@ -426,6 +437,7 @@ return {
 				highlight = true,
 				depth_limit = 8,
 				icons = require("lazyvim.config").icons.kinds,
+				lazy_update_context = true,
 			}
 		end,
 	},

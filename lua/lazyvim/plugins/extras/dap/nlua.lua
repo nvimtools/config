@@ -12,6 +12,7 @@ return {
 						require("osv").launch({ port = 8086 })
 					end,
 					desc = "Adapter Lua Server",
+					ft = "lua",
 				},
 				{
 					"<leader>dal",
@@ -19,6 +20,7 @@ return {
 						require("osv").run_this()
 					end,
 					desc = "Adapter Lua",
+					ft = "lua",
 				},
 			},
 			config = function()
