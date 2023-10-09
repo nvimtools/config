@@ -1,9 +1,11 @@
+local Util = require("lazy.core.util")
+
 ---@class LazyVimConfig: LazyVimOptions
 local M = {}
 
-M.lazy_version = ">=9.1.0"
+M.lazy_version = ">=10.8.0"
 M.use_lazy_file = true
-M.lazy_file_events = { "BufReadPost", "BufNewFile" }
+M.lazy_file_events = { "BufReadPost", "BufNewFile", "BufWritePre" }
 
 ---@class LazyVimOptions
 local defaults = {
@@ -90,33 +92,50 @@ M.renames = {
 ---@type LazyVimOptions
 local options
 
+---@param lines {[1]:string, [2]:string}[]
+function M.msg(lines)
+	vim.cmd([[clear]])
+	vim.api.nvim_echo(lines, true, {})
+	vim.fn.getchar()
+end
+
 ---@param opts? LazyVimOptions
 function M.setup(opts)
 	options = vim.tbl_deep_extend("force", defaults, opts or {}) or {}
 
 	if vim.fn.has("nvim-0.9.0") == 0 then
-		vim.api.nvim_echo({
+		M.msg({
 			{
 				"LazyVim requires Neovim >= 0.9.0\n",
 				"ErrorMsg",
 			},
 			{ "Press any key to exit", "MoreMsg" },
-		}, true, {})
-
-		vim.fn.getchar()
+		})
 		vim.cmd([[quit]])
 		return
 	end
 
 	if not M.has() then
-		require("lazy.core.util").error(
-			"**LazyVim** needs **lazy.nvim** version "
-				.. M.lazy_version
-				.. " to work properly.\n"
-				.. "Please upgrade **lazy.nvim**",
-			{ title = "LazyVim" }
-		)
-		error("Exiting")
+		M.msg({
+			{
+				"LazyVim requires lazy.nvim " .. M.lazy_version .. "\n",
+				"WarningMsg",
+			},
+			{ "Press any key to attempt an upgrade", "MoreMsg" },
+		})
+
+		vim.api.nvim_create_autocmd("User", {
+			pattern = "LazyVimStarted",
+			callback = function()
+				require("lazy").update({ plugins = { "lazy.nvim" }, wait = true })
+				M.msg({
+					{
+						"**lazy.nvim** has been upgraded.\nPlease restart **Neovim**",
+						"WarningMsg",
+					},
+				})
+			end,
+		})
 	end
 
 	-- autocmds can be loaded lazily when not opening a file
@@ -141,7 +160,8 @@ function M.setup(opts)
 		M.lazy_file()
 	end
 
-	require("lazy.core.util").try(function()
+	Util.track("colorscheme")
+	Util.try(function()
 		if type(M.colorscheme) == "function" then
 			M.colorscheme()
 		else
@@ -150,10 +170,11 @@ function M.setup(opts)
 	end, {
 		msg = "Could not load your colorscheme",
 		on_error = function(msg)
-			require("lazy.core.util").error(msg)
+			Util.error(msg)
 			vim.cmd.colorscheme("habamax")
 		end,
 	})
+	Util.track()
 end
 
 -- Properly load file based plugins without blocking the UI
@@ -165,7 +186,6 @@ function M.lazy_file()
 			return
 		end
 		local Event = require("lazy.core.handler.event")
-		local Util = require("lazy.core.util")
 		vim.api.nvim_del_augroup_by_name("lazy_file")
 
 		Util.track({ event = "LazyVim.lazy_file" })
@@ -217,7 +237,6 @@ end
 
 ---@param name "autocmds" | "options" | "keymaps"
 function M.load(name)
-	local Util = require("lazy.core.util")
 	local function _load(mod)
 		Util.try(function()
 			require(mod)
@@ -249,7 +268,10 @@ M.did_init = false
 function M.init()
 	if not M.did_init then
 		M.did_init = true
-		vim.opt.rtp:append(require("lazy.core.config").spec.plugins.daze.dir)
+		local plugin = require("lazy.core.config").spec.plugins.daze
+		if plugin then
+			vim.opt.rtp:append(plugin.dir)
+		end
 
 		M.use_lazy_file = M.use_lazy_file and vim.fn.argc(-1) > 0
 		---@diagnostic disable-next-line: undefined-field
@@ -265,25 +287,25 @@ function M.init()
 		local Plugin = require("lazy.core.plugin")
 		local add = Plugin.Spec.add
 		---@diagnostic disable-next-line: duplicate-set-field
-		Plugin.Spec.add = function(self, plugin, ...)
-			if type(plugin) == "table" then
-				if M.renames[plugin[1]] then
-					require("lazy.core.util").warn(
+		Plugin.Spec.add = function(self, plug, ...)
+			if type(plug) == "table" then
+				if M.renames[plug[1]] then
+					Util.warn(
 						("Plugin `%s` was renamed to `%s`.\nPlease update your config for `%s`"):format(
-							plugin[1],
-							M.renames[plugin[1]],
+							plug[1],
+							M.renames[plug[1]],
 							self.importing or "LazyVim"
 						),
 						{ title = "LazyVim" }
 					)
-					plugin[1] = M.renames[plugin[1]]
+					plug[1] = M.renames[plug[1]]
 				end
-				if not M.use_lazy_file and plugin.event then
-					if plugin.event == "LazyFile" then
-						plugin.event = M.lazy_file_events
-					elseif type(plugin.event) == "table" then
+				if not M.use_lazy_file and plug.event then
+					if plug.event == "LazyFile" then
+						plug.event = M.lazy_file_events
+					elseif type(plug.event) == "table" then
 						local events = {} ---@type string[]
-						for _, event in ipairs(plugin.event) do
+						for _, event in ipairs(plug.event) do
 							if event == "LazyFile" then
 								vim.list_extend(events, M.lazy_file_events)
 							else
@@ -293,7 +315,7 @@ function M.init()
 					end
 				end
 			end
-			return add(self, plugin, ...)
+			return add(self, plug, ...)
 		end
 
 		-- Add support for the LazyFile event

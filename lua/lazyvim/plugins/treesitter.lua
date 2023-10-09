@@ -40,16 +40,19 @@ return {
 			{ "<bs>", desc = "Decrement selection", mode = "x" },
 		},
 		---@type TSConfig
+		---@diagnostic disable-next-line: missing-fields
 		opts = {
 			highlight = { enable = true },
 			indent = { enable = true },
 			ensure_installed = {
 				"bash",
 				"c",
+				"diff",
 				"html",
 				"javascript",
 				"jsdoc",
 				"json",
+				"jsonc",
 				"lua",
 				"luadoc",
 				"luap",
@@ -58,6 +61,7 @@ return {
 				"python",
 				"query",
 				"regex",
+				"toml",
 				"tsx",
 				"typescript",
 				"vim",

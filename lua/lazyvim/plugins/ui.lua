@@ -100,15 +100,32 @@ return {
 				right_trunc_marker = "󰄾",
 			},
 		},
+		config = function(_, opts)
+			require("bufferline").setup(opts)
+			-- Fix bufferline when restoring a session
+			vim.api.nvim_create_autocmd("BufAdd", {
+				callback = function()
+					vim.schedule(function()
+						pcall(nvim_bufferline)
+					end)
+				end,
+			})
+		end,
 	},
 
 	-- statusline
 	{
 		"nvim-lualine/lualine.nvim",
 		event = "VeryLazy",
+		init = function()
+			vim.g.lualine_laststatus = vim.o.laststatus
+			vim.o.laststatus = 0
+		end,
 		opts = function()
 			local icons = require("lazyvim.config").icons
 			local Util = require("lazyvim.util")
+
+			vim.o.laststatus = vim.g.lualine_laststatus
 
 			return {
 				options = {
@@ -380,8 +397,6 @@ return {
 			return dashboard
 		end,
 		config = function(_, dashboard)
-			local laststatus = vim.o.laststatus
-			vim.o.laststatus = 0
 			-- close Lazy and re-open when the dashboard is ready
 			if vim.o.filetype == "lazy" then
 				vim.cmd.close()
@@ -394,14 +409,6 @@ return {
 				})
 			end
 
-			vim.api.nvim_create_autocmd("BufUnload", {
-				once = true,
-				buffer = vim.api.nvim_get_current_buf(),
-				callback = function()
-					vim.opt.laststatus = laststatus
-				end,
-			})
-
 			require("alpha").setup(dashboard.opts)
 
 			vim.api.nvim_create_autocmd("User", {
@@ -410,7 +417,13 @@ return {
 				callback = function()
 					local stats = require("lazy").stats()
 					local ms = (math.floor(stats.startuptime * 100 + 0.5) / 100)
-					dashboard.section.footer.val = "Neovim loaded " .. stats.count .. " plugins in " .. ms .. "ms"
+					dashboard.section.footer.val = "Neovim loaded "
+						.. stats.loaded
+						.. "/"
+						.. stats.count
+						.. " plugins in "
+						.. ms
+						.. "ms"
 					pcall(vim.cmd.AlphaRedraw)
 				end,
 			})

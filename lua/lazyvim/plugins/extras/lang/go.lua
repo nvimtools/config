@@ -90,7 +90,7 @@ return {
 				vim.list_extend(opts.sources, {
 					nls.builtins.code_actions.gomodifytags,
 					nls.builtins.code_actions.impl,
-					nls.builtins.formatting.goimports,
+					nls.builtins.formatting.goimports_reviser,
 				})
 			end
 		end,
