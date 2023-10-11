@@ -227,6 +227,7 @@ return {
 		keys = { { "<leader>cm", "<cmd>Mason<cr>", desc = "Mason" } },
 		build = ":MasonUpdate",
 		opts = {
+			PATH = "append",
 			ensure_installed = {
 				"stylua",
 				"shfmt",
