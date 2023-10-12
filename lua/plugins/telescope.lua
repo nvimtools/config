@@ -10,7 +10,9 @@ return {
 		"nvim-telescope/telescope-github.nvim",
 		{
 			"https://git.sr.ht/~reggie/licenses.nvim",
-			opts = {},
+			opts = {
+				wrap_width = 80,
+			},
 		},
 		"AckslD/nvim-neoclip.lua",
 		"benfowler/telescope-luasnip.nvim",
