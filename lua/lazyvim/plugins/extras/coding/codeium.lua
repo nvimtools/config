@@ -8,7 +8,6 @@ return {
 					"nvim-lua/plenary.nvim",
 				},
 				cmd = "Codeium",
-				build = ":Codeium Auth",
 				opts = {},
 			},
 		},
