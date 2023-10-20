@@ -30,7 +30,7 @@ require("lazy").setup({
 	dev = {
 		path = "~/ghq/github.com/nvimtools",
 		patterns = {
-			"nvimtools",
+			-- "nvimtools",
 		},
 	},
 	install = { colorscheme = { "nord" } },
