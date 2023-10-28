@@ -1,41 +1,41 @@
 return {
-	{
-		"nvim-treesitter/nvim-treesitter",
-		opts = function(_, opts)
-			if type(opts.ensure_installed) == "table" then
-				vim.list_extend(opts.ensure_installed, { "cmake" })
-			end
-		end,
-	},
-	{
-		"nvimtools/none-ls.nvim",
-		opts = function(_, opts)
-			local nls = require("null-ls")
-			opts.sources = opts.sources or {}
-			vim.list_extend(opts.sources, {
-				nls.builtins.diagnostics.cmake_lint,
-				nls.builtins.formatting.cmake_format,
-			})
-		end,
-	},
-	{
-		"mason.nvim",
-		opts = function(_, opts)
-			opts.ensure_installed = opts.ensure_installed or {}
-			vim.list_extend(opts.ensure_installed, { "cmakelang" })
-		end,
-	},
-	{
-		"neovim/nvim-lspconfig",
-		opts = {
-			servers = {
-				neocmake = {},
-			},
-		},
-	},
-	{
-		"Civitasv/cmake-tools.nvim",
-		opts = {},
-		event = "LazyFile",
-	},
+  {
+    "nvim-treesitter/nvim-treesitter",
+    opts = function(_, opts)
+      if type(opts.ensure_installed) == "table" then
+        vim.list_extend(opts.ensure_installed, { "cmake" })
+      end
+    end,
+  },
+  {
+    "nvimtools/none-ls.nvim",
+    opts = function(_, opts)
+      local nls = require("null-ls")
+      opts.sources = opts.sources or {}
+      vim.list_extend(opts.sources, {
+        nls.builtins.diagnostics.cmake_lint,
+        nls.builtins.formatting.cmake_format,
+      })
+    end,
+  },
+  {
+    "mason.nvim",
+    opts = function(_, opts)
+      opts.ensure_installed = opts.ensure_installed or {}
+      vim.list_extend(opts.ensure_installed, { "cmakelang" })
+    end,
+  },
+  {
+    "neovim/nvim-lspconfig",
+    opts = {
+      servers = {
+        neocmake = {},
+      },
+    },
+  },
+  {
+    "Civitasv/cmake-tools.nvim",
+    opts = {},
+    event = "LazyFile",
+  },
 }
