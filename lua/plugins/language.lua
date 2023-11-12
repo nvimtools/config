@@ -41,7 +41,7 @@ return {
 				require("lazyvim.util").on_attach(function(client)
 					if client.name == "eslint" then
 						client.server_capabilities.documentFormattingProvider = true
-					elseif client.name == "tsserver" or client.name == "biome" then
+					elseif client.name == "typescript-tools" or client.name == "biome" then
 						client.server_capabilities.documentFormattingProvider = false
 					end
 				end)
@@ -94,7 +94,7 @@ return {
 		{ import = "lazyvim.plugins.extras.lang.meson" },
 
 		{ import = "lazyvim.plugins.extras.lang.python" },
-		{ import = "lazyvim.plugins.extras.formatting.blackd" },
+		{ import = "lazyvim.plugins.extras.formatting.black" },
 		{ import = "lazyvim.plugins.extras.formatting.usort" },
 
 		{ import = "lazyvim.plugins.extras.lang.elixir" },
