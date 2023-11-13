@@ -117,9 +117,15 @@ local conceallevel = vim.o.conceallevel > 0 and vim.o.conceallevel or 3
 map("n", "<leader>uc", function()
   Util.toggle("conceallevel", false, { 0, conceallevel })
 end, { desc = "Toggle Conceal" })
-if vim.lsp.inlay_hint then
+if vim.lsp.buf.inlay_hint or vim.lsp.inlay_hint then
   map("n", "<leader>uh", function()
-    vim.lsp.inlay_hint(0, nil)
+    bufnr = bufnr or 0
+    local inlay_hint = vim.lsp.buf.inlay_hint or vim.lsp.inlay_hint
+    if inlay_hint.enable then
+      vim.lsp.inlay_hint.enable(bufnr, not inlay_hint.is_enabled())
+    else
+      vim.lsp.inlay_hint(bufnr, nil)
+    end
   end, { desc = "Toggle Inlay Hints" })
 end
 
