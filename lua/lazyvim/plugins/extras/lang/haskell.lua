@@ -24,10 +24,7 @@ return {
         end,
       },
     },
-    branch = "2.x.x",
-    init = function()
-      vim.g.haskell_tools = {}
-    end,
+    version = "^3",
     keys = {
       {
         "<space>ch",
