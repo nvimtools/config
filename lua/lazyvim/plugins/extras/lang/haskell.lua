@@ -17,6 +17,17 @@ return {
         optional = true,
       },
       {
+        "nvim-lspconfig",
+        optional = true,
+        opts = {
+          setup = {
+            hls = function()
+              return true -- avoid duplicate hls
+            end,
+          },
+        },
+      },
+      {
         "mason.nvim",
         opts = function(_, opts)
           opts.ensure_installed = opts.ensure_installed or {}
