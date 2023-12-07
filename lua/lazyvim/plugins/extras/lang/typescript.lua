@@ -21,10 +21,10 @@ return {
       settings = {
         expose_as_code_action = "all",
         tsserver_file_preferences = {
-          includeInlayParameterNameHints = "literals",
+          includeInlayParameterNameHints = "all",
           includeInlayFunctionParameterTypeHints = true,
           includeInlayVariableTypeHints = false,
-          includeInlayPropertyDeclarationTypeHints = false,
+          includeInlayPropertyDeclarationTypeHints = true,
           includeInlayFunctionLikeReturnTypeHints = true,
           includeInlayEnumMemberValueHints = false,
           includeCompletionsForModuleExports = true,
