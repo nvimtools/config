@@ -43,6 +43,7 @@ return {
 						client.server_capabilities.documentFormattingProvider = true
 					elseif client.name == "typescript-tools" or client.name == "biome" then
 						client.server_capabilities.documentFormattingProvider = false
+						client.server_capabilities.documentRangeFormattingProvider = false
 					end
 				end)
 			end,
