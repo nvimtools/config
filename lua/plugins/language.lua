@@ -27,6 +27,12 @@ return {
 		},
 		---@class PluginLspOpts
 		opts = {
+			servers = {
+				pyright = {
+					mason = false,
+					cmd = { "delance-langserver", "--stdio" },
+				},
+			},
 			capabilities = {
 				textDocument = {
 					foldingRange = { -- for nvim-ufo
@@ -96,7 +102,6 @@ return {
 
 		{ import = "lazyvim.plugins.extras.lang.python" },
 		{ import = "lazyvim.plugins.extras.formatting.black" },
-		{ import = "lazyvim.plugins.extras.formatting.usort" },
 
 		{ import = "lazyvim.plugins.extras.lang.elixir" },
 
