@@ -17,8 +17,10 @@ local working, ret = pcall(function()
 
 	add('echasnovski/mini.nvim')
 
+	---@type boolean, boolean
 	local success, override = pcall(require, 'config')
-	if success and not override then
+
+	if (success and not override) or (not success) then
 		now(function() require('mini.basics').setup() end)
 		now(function()
 			require('mini.notify').setup()
@@ -56,8 +58,6 @@ local working, ret = pcall(function()
 				highlight = { enable = true },
 			})
 		end)
-	else
-		error(override)
 	end
 end)
 
