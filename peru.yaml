@@ -1,0 +1,44 @@
+imports:
+  deps|mini: lua/_vendor/mini
+  basics|mini: lua/_vendor/mini
+  ai|mini: lua/_vendor/mini
+  comment|mini: lua/_vendor/mini
+  bufremove|mini: lua/_vendor/mini
+  jump|mini: lua/_vendor/mini
+  pairs|mini: lua/_vendor/mini
+  surround|mini: lua/_vendor/mini
+
+git module deps:
+  url: https://github.com/echasnovski/mini.deps
+  rev: 0c5fd8ea35fce69442448d3f1d62ffe63126ef00
+
+git module basics:
+  url: https://github.com/echasnovski/mini.basics
+  rev: 4332bee8e65f17580f5cc048fe9aef34508808e1
+
+git module ai:
+  url: https://github.com/echasnovski/mini.ai
+  rev: ee9446a17c160aba6a04ff22097389c41872c878
+
+git module comment:
+  url: https://github.com/echasnovski/mini.comment
+  rev: a4b7e46deb9ad2feb8902cc5dbf087eced112ee5
+
+git module bufremove:
+  url: https://github.com/echasnovski/mini.bufremove
+  rev: 931a3bb514147d9e812767275c4beba6b779b1d3
+
+git module jump:
+  url: https://github.com/echasnovski/mini.jump
+  rev: 7d6dc73bd1a28c41545973cab0e10292a3accc56
+
+git module pairs:
+  url: https://github.com/echasnovski/mini.pairs
+  rev: 04f58f2545ed80ac3b52dd4826e93f33e15b2af6
+
+git module surround:
+  url: https://github.com/echasnovski/mini.surround
+  rev: a1b590cc3b676512de507328d6bbab5e43794720
+
+rule mini:
+  export: lua/mini/

@@ -1,17 +1,23 @@
-*
+/*
 
 !/README.md
 !/LICENSE
+!/Makefile
+
+!/.pre-commit-config.yaml
 
 !/.editorconfig
 
-!/stylua.toml
+!/.stylua.toml
 !/.styluaignore
 
 !/.gitignore
 
-!/scripts/
+!/peru.yaml
 
 !/init.lua
+
+!/lua
+/lua/*
 !/lua/_vendor
 !/lua/config.example.lua

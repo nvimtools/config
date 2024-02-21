@@ -1,7 +1,7 @@
 <div align="center">
 
-`pure.nvim`
-===
+# `pure.nvim`
+
 a small, respectful & vanilla neovim preset.
 
 </div>
@@ -21,6 +21,7 @@ or `git clone`.
     SPDX-FileCopyright-Text: 2024 Zephyr Lykos <self@mochaa.ws>
 
 [^1]: in case you really need one:
+
     - bring your own config
     - an essential, non-intrusive mini.nvim suite
     - failsafe mode works without network or git

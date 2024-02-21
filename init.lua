@@ -4,8 +4,8 @@ local path_package = vim.fn.stdpath('data') .. '/site'
 local _deps
 
 if not vim.loop.fs_stat(path_package .. '/pack/deps/start/mini.nvim') then
-	_deps = require('_vendor.mini-deps')
-	require('_vendor.mini-basics').setup()
+	_deps = require('_vendor.mini.deps')
+	require('_vendor.mini.basics').setup()
 else
 	_deps = require('mini.deps')
 end
@@ -85,10 +85,10 @@ Traceback:
 ]]
 	vim.notify(failsafe_message .. ret, vim.log.levels.ERROR)
 
-	require('_vendor.mini-ai').setup()
-	require('_vendor.mini-comment').setup()
-	require('_vendor.mini-surround').setup()
-	require('_vendor.mini-pairs').setup()
-	require('_vendor.mini-bufremove').setup()
-	require('_vendor.mini-jump').setup()
+	require('_vendor.mini.ai').setup()
+	require('_vendor.mini.comment').setup()
+	require('_vendor.mini.surround').setup()
+	require('_vendor.mini.pairs').setup()
+	require('_vendor.mini.bufremove').setup()
+	require('_vendor.mini.jump').setup()
 end
