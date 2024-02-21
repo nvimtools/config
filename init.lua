@@ -7,7 +7,6 @@ if not vim.loop.fs_stat(path_package .. '/pack/deps/start/mini.nvim') then
 	_deps = require('_vendor.mini-deps')
 	require('_vendor.mini-basics').setup()
 else
-	vim.cmd("packadd mini.nvim")
 	_deps = require('mini.deps')
 end
 
