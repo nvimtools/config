@@ -16,7 +16,10 @@ local working, ret = pcall(function()
 	local add, now, later = MiniDeps.add, MiniDeps.now, MiniDeps.later
 
 	add('echasnovski/mini.nvim')
-	if vim.loop.fs_stat(path_package .. '/pack/deps/opt/mini.nvim') and not vim.loop.fs_stat(path_package .. '/pack/deps/start/mini.nvim') then
+	if
+		vim.loop.fs_stat(path_package .. '/pack/deps/opt/mini.nvim')
+		and not vim.loop.fs_stat(path_package .. '/pack/deps/start/mini.nvim')
+	then
 		vim.fn.mkdir(path_package .. '/pack/deps/start', 'p')
 		vim.loop.fs_rename(path_package .. '/pack/deps/opt/mini.nvim', path_package .. '/pack/deps/start/mini.nvim')
 	end
@@ -24,7 +27,7 @@ local working, ret = pcall(function()
 	---@type boolean, boolean
 	local success, override = pcall(require, 'config')
 
-	if (success and not override) or (not success) then
+	if (success and not override) or not success then
 		now(function() require('mini.basics').setup() end)
 		now(function()
 			require('mini.notify').setup()
@@ -43,11 +46,13 @@ local working, ret = pcall(function()
 		later(function() require('mini.completion').setup() end)
 		later(function() require('mini.jump').setup() end)
 		later(function() require('mini.pick').setup() end)
-		later(function()
-			require('mini.indentscope').setup({
-				draw = { animation = require('mini.indentscope').gen_animation.none() }
-			})
-		end)
+		later(
+			function()
+				require('mini.indentscope').setup({
+					draw = { animation = require('mini.indentscope').gen_animation.none() },
+				})
+			end
+		)
 		later(function() require('mini.cursorword').setup() end)
 		later(function() require('mini.bufremove').setup() end)
 		later(function() require('mini.bracketed').setup() end)
@@ -55,7 +60,9 @@ local working, ret = pcall(function()
 		now(function()
 			add({
 				source = 'nvim-treesitter/nvim-treesitter',
-				hooks = { post_checkout = function() vim.cmd('TSUpdate') end },
+				hooks = {
+					post_checkout = function() vim.cmd('TSUpdate') end,
+				},
 			})
 			require('nvim-treesitter.configs').setup({
 				ensure_installed = { 'lua', 'vimdoc' },
