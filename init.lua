@@ -34,13 +34,14 @@ local working, ret = pcall(function()
 		now(function() require('mini.statusline').setup() end)
 		now(function() require('mini.starter').setup() end)
 
+		-- load instantly to replace netrw
+		now(function() require('mini.files').setup() end)
 
 		later(function() require('mini.ai').setup() end)
 		later(function() require('mini.comment').setup() end)
 		later(function() require('mini.surround').setup() end)
 		later(function() require('mini.pairs').setup() end)
 		later(function() require('mini.completion').setup() end)
-		later(function() require('mini.files').setup() end)
 		later(function() require('mini.jump').setup() end)
 		later(function() require('mini.pick').setup() end)
 		later(function()
