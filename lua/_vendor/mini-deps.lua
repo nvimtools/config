@@ -47,7 +47,6 @@
 --- # Dependencies ~
 ---
 --- For most of its functionality this plugin relies on `git` CLI tool.
---- It should be at least version 2.36.0.
 --- See https://git-scm.com/ for more information about how to install it.
 --- Actual knowledge of Git is not required but helpful.
 ---
@@ -275,11 +274,16 @@
 ---   Default: `nil` for no dependencies.
 ---
 --- - <hooks> `(table|nil)` - table with callable hooks to call on certain events.
----   Each hook is executed without arguments. Possible hook names:
+---   Possible hook names:
 ---     - <pre_install>   - before creating plugin directory.
 ---     - <post_install>  - after  creating plugin directory.
 ---     - <pre_checkout>  - before making change in plugin directory.
 ---     - <post_checkout> - after  making change in plugin directory.
+---   Each hook is executed with the following table as an argument:
+---     - <path> (`string`)   - absolute path to plugin's directory
+---       (might not yet exist on disk).
+---     - <source> (`string`) - resolved <source> from spec.
+---     - <name> (`string`)   - resolved <name> from spec.
 ---   Default: `nil` for no hooks.
 ---@tag MiniDeps-plugin-specification
 
@@ -475,6 +479,7 @@ MiniDeps.add = function(spec, opts)
 
   -- Install
   if #plugs_to_install > 0 then
+    H.ensure_git_exec()
     for _, p in ipairs(plugs_to_install) do
       p.job = H.cli_new_job({}, vim.fn.getcwd())
     end
@@ -535,6 +540,7 @@ MiniDeps.update = function(names, opts)
   if #plugs == 0 then return H.notify('Nothing to update') end
 
   -- Prepare repositories and specifications
+  H.ensure_git_exec()
   H.plugs_ensure_origin_source(plugs)
 
   -- Preprocess before downloading
@@ -598,6 +604,7 @@ end
 ---   All plugins in current session are processed.
 MiniDeps.snap_get = function()
   local plugs = H.plugs_from_names()
+  H.ensure_git_exec()
   H.plugs_infer_head(plugs)
   H.plugs_show_job_errors(plugs, 'computing snapshot')
 
@@ -631,6 +638,7 @@ MiniDeps.snap_set = function(snap)
   end
 
   -- Checkout
+  H.ensure_git_exec()
   H.plugs_checkout(plugs)
   H.plugs_show_job_errors(plugs, 'applying snapshot')
 end
@@ -760,6 +768,9 @@ H.cache = {
 
   -- Errors during execution of `now()` or `later()`
   exec_errors = {},
+
+  -- Git version
+  git_version = nil,
 }
 
 -- Buffer name counts
@@ -880,12 +891,20 @@ end
 
 --stylua: ignore
 H.git_args = {
+  version = function()
+    return { 'version' }
+  end,
   clone = function(source, path)
-    return {
+    local res = {
       'clone', '--quiet', '--filter=blob:none',
       '--recurse-submodules', '--also-filter-submodules', '--origin', 'origin',
       source, path,
     }
+    -- Use `--also-filter-submodules` only with appropriate version
+    if not (H.cache.git_version.major >= 2 and H.cache.git_version.minor >= 36) then
+      table.remove(res, 5)
+    end
+    return res
   end,
   stash = function(timestamp)
     return { 'stash', '--quiet', '--message', '(mini.deps) ' .. timestamp .. ' Stash before checkout' }
@@ -926,6 +945,15 @@ H.git_args = {
     }
   end,
 }
+
+H.ensure_git_exec = function()
+  if H.cache.git_version ~= nil then return end
+  local jobs = { H.cli_new_job(H.git_cmd('version'), vim.fn.getcwd()) }
+  H.cli_run(jobs)
+  if #jobs[1].err > 0 then H.error('Could not find executable `git` CLI tool') end
+  local major, minor = string.match(H.cli_stream_tostring(jobs[1].out), '(%d+)%.(%d+)')
+  H.cache.git_version = { major = tonumber(major), minor = tonumber(minor) }
+end
 
 -- Plugin specification -------------------------------------------------------
 H.expand_spec = function(target, spec)
@@ -978,7 +1006,7 @@ H.plugs_exec_hooks = function(plugs, name)
     local has_error = p.job and #p.job.err > 0
     local should_execute = vim.is_callable(p.hooks[name]) and not has_error
     if should_execute then
-      local ok, err = pcall(p.hooks[name])
+      local ok, err = pcall(p.hooks[name], { path = p.path, source = p.source, name = p.name })
       if not ok then
         local msg = string.format('Error executing %s hook in `%s`:\n%s', name, p.name, err)
         H.notify(msg, 'ERROR')
@@ -1213,7 +1241,7 @@ H.clean_confirm = function(paths)
     if #paths_to_delete == 0 then return H.notify('Nothing to delete') end
     H.clean_delete(paths_to_delete)
   end
-  H.show_confirm_buf(lines, 'mini-deps://confirm-clean', finish_clean)
+  H.show_confirm_buf(lines, { name = 'mini-deps://confirm-clean', exec_on_write = finish_clean })
 
   -- Define basic highlighting
   vim.cmd('syntax region MiniDepsHint start="^\\%1l" end="\\%' .. n_header .. 'l$"')
@@ -1315,6 +1343,7 @@ H.update_feedback_confirm = function(lines)
     "Line `!!! <plugin_name> !!!` means plugin had an error and won't be updated.",
     'See error details below it.',
     '',
+    'Use regular fold keys (`zM`, `zR`, etc.) to manage shorter view.',
     'To finish update, write this buffer (for example, with `:write` command).',
     'To cancel update, close this window (for example, with `:close` command).',
     '',
@@ -1335,7 +1364,7 @@ H.update_feedback_confirm = function(lines)
     MiniDeps.update(names, { force = true, offline = true })
   end
 
-  H.show_confirm_buf(report, 'mini-deps://confirm-update', finish_update)
+  H.show_confirm_buf(report, { name = 'mini-deps://confirm-update', exec_on_write = finish_update, setup_folds = true })
 
   -- Define basic highlighting
   vim.cmd('syntax region MiniDepsHint start="^\\%1l" end="\\%' .. n_header .. 'l$"')
@@ -1368,12 +1397,11 @@ H.update_feedback_log = function(lines)
 end
 
 -- Confirm --------------------------------------------------------------------
-H.show_confirm_buf = function(lines, name, exec_on_write)
+H.show_confirm_buf = function(lines, opts)
   -- Show buffer
   local buf_id = vim.api.nvim_create_buf(true, true)
-  H.buf_set_name(buf_id, name)
+  H.buf_set_name(buf_id, opts.name)
   vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, lines)
-  vim.bo[buf_id].buftype, vim.bo[buf_id].filetype, vim.bo[buf_id].modified = 'acwrite', 'minideps-confirm', false
   vim.cmd('tab sbuffer ' .. buf_id)
   local tab_num, win_id = vim.api.nvim_tabpage_get_number(0), vim.api.nvim_get_current_win()
 
@@ -1383,9 +1411,27 @@ H.show_confirm_buf = function(lines, name, exec_on_write)
     vim.cmd('redraw')
   end)
 
+  -- Define folding
+  local is_title = function(l) return l:find('^%-%-%-') or l:find('^%+%+%+') or l:find('^%!%!%!') end
+  --stylua: ignore
+  MiniDeps._confirm_foldexpr = function(lnum)
+    if lnum == 1 then return 0 end
+    if is_title(vim.fn.getline(lnum - 1)) then return 1 end
+    if is_title(vim.fn.getline(lnum + 1)) then return 0 end
+    return '='
+  end
+
+  -- Possibly set up folding. Use `:setlocal` for these options to not be
+  -- inherited if some other buffer is opened in the same window.
+  if opts.setup_folds then
+    vim.cmd('setlocal foldenable foldmethod=expr foldlevel=999')
+    vim.cmd('setlocal foldexpr=v:lua.MiniDeps._confirm_foldexpr(v:lnum)')
+  end
+
   -- Define action on accepting confirm
   local finish = function()
-    exec_on_write(buf_id)
+    MiniDeps._confirm_foldexpr = nil
+    opts.exec_on_write(buf_id)
     delete_buffer()
   end
   -- - Use `nested` to allow other events (`WinEnter` for 'mini.statusline')
@@ -1394,11 +1440,15 @@ H.show_confirm_buf = function(lines, name, exec_on_write)
   -- Define action to cancel confirm
   local cancel_au_id
   local on_cancel = function(data)
+    MiniDeps._confirm_foldexpr = nil
     if tonumber(data.match) ~= win_id then return end
     pcall(vim.api.nvim_del_autocmd, cancel_au_id)
     delete_buffer()
   end
   cancel_au_id = vim.api.nvim_create_autocmd('WinClosed', { nested = true, callback = on_cancel })
+
+  -- Set buffer-local options last (so that user autocmmands could override)
+  vim.bo.buftype, vim.bo.filetype, vim.bo.modified = 'acwrite', 'minideps-confirm', false
 end
 
 -- CLI ------------------------------------------------------------------------
