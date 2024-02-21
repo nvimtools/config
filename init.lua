@@ -51,7 +51,6 @@ local working, ret = pcall(function()
 		end)
 		later(function() require('mini.cursorword').setup() end)
 		later(function() require('mini.bufremove').setup() end)
-		later(function() require('mini.jump').setup() end)
 		later(function() require('mini.bracketed').setup() end)
 
 		later(function()
