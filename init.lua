@@ -53,7 +53,7 @@ local working, ret = pcall(function()
 		later(function() require('mini.bufremove').setup() end)
 		later(function() require('mini.bracketed').setup() end)
 
-		later(function()
+		now(function()
 			add({
 				source = 'nvim-treesitter/nvim-treesitter',
 				hooks = { post_checkout = function() vim.cmd('TSUpdate') end },
