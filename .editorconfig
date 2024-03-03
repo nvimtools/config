@@ -9,13 +9,13 @@ indent_size = 4
 max_line_length = 120
 
 [*.json]
-indent_style = spaces
+indent_style = space
 indent_size = 2
 
 [*.{yaml,yml}]
-indent_style = spaces
+indent_style = space
 indent_size = 2
 
 [*.md]
-indent_style = spaces
+indent_style = space
 indent_size = 2
