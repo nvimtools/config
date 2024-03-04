@@ -26,10 +26,10 @@ local working, ret = pcall(function()
 		vim.uv.fs_rename(path_package .. '/pack/deps/opt/mini.nvim', path_package .. '/pack/deps/start/mini.nvim')
 	end
 
-	---@type boolean, boolean
-	local success, override = pcall(require, 'config')
+	---@type boolean, function
+	local success, config = pcall(require, 'config')
 
-	if (success and not override) or not success then
+	if (success and type(config) == 'function') or not success then
 		now(function() require('mini.basics').setup() end)
 		now(function()
 			require('mini.notify').setup()
@@ -71,6 +71,8 @@ local working, ret = pcall(function()
 				highlight = { enable = true },
 			} --[[@as TSConfig|{}]])
 		end)
+
+		config()
 	end
 end)
 
