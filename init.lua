@@ -5,7 +5,7 @@ local path_package = vim.fn.stdpath('data') .. '/site'
 ---@type table
 local _deps
 
-if not vim.loop.fs_stat(path_package .. '/pack/deps/start/mini.nvim') then
+if not vim.uv.fs_stat(path_package .. '/pack/deps/start/mini.nvim') then
 	_deps = require('_vendor.mini.deps')
 	require('_vendor.mini.basics').setup()
 else
@@ -19,11 +19,11 @@ local working, ret = pcall(function()
 
 	add('echasnovski/mini.nvim')
 	if
-		vim.loop.fs_stat(path_package .. '/pack/deps/opt/mini.nvim')
-		and not vim.loop.fs_stat(path_package .. '/pack/deps/start/mini.nvim')
+		vim.uv.fs_stat(path_package .. '/pack/deps/opt/mini.nvim')
+		and not vim.uv.fs_stat(path_package .. '/pack/deps/start/mini.nvim')
 	then
 		vim.fn.mkdir(path_package .. '/pack/deps/start', 'p')
-		vim.loop.fs_rename(path_package .. '/pack/deps/opt/mini.nvim', path_package .. '/pack/deps/start/mini.nvim')
+		vim.uv.fs_rename(path_package .. '/pack/deps/opt/mini.nvim', path_package .. '/pack/deps/start/mini.nvim')
 	end
 
 	---@type boolean, boolean
@@ -69,7 +69,7 @@ local working, ret = pcall(function()
 			require('nvim-treesitter.configs').setup({
 				ensure_installed = { 'lua', 'vimdoc' },
 				highlight = { enable = true },
-			})
+			} --[[@as TSConfig|{}]])
 		end)
 	end
 end)
