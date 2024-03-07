@@ -10,7 +10,7 @@ imports:
 
 git module deps:
   url: https://github.com/echasnovski/mini.deps
-  rev: de9040c83b178f8e69fd0a695fed7b5ce492c2dd
+  rev: 3ca4d7c0c59af6919e7adc820daf52a6da4db222
 
 git module basics:
   url: https://github.com/echasnovski/mini.basics
