@@ -22,7 +22,7 @@ git module ai:
 
 git module comment:
   url: https://github.com/echasnovski/mini.comment
-  rev: a4b7e46deb9ad2feb8902cc5dbf087eced112ee5
+  rev: 21b8c0cbf4d5117a5a46fecb61dc625c0132f093
 
 git module bufremove:
   url: https://github.com/echasnovski/mini.bufremove
@@ -38,7 +38,7 @@ git module pairs:
 
 git module surround:
   url: https://github.com/echasnovski/mini.surround
-  rev: a1b590cc3b676512de507328d6bbab5e43794720
+  rev: 49e0364b8c9a3258b485c5ece40bb0f3a5e94b1c
 
 rule mini:
   export: lua/mini/
