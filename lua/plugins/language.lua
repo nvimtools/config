@@ -101,7 +101,6 @@ return {
 		{ import = "lazyvim.plugins.extras.lang.meson" },
 
 		{ import = "lazyvim.plugins.extras.lang.python" },
-		{ import = "lazyvim.plugins.extras.formatting.black" },
 
 		{ import = "lazyvim.plugins.extras.lang.elixir" },
 
@@ -143,6 +142,7 @@ return {
 		opts = function(_, opts)
 			vim.list_extend(opts.ensure_installed, {
 				-- misc
+				"editorconfig-checker",
 				"actionlint",
 				-- "commitlint",
 			})
