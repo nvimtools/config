@@ -14,7 +14,7 @@ git module deps:
 
 git module basics:
   url: https://github.com/echasnovski/mini.basics
-  rev: f2e8529fe9e89c880f186de1f439c355e8d0e0b1
+  rev: d6b0ee8630adb8b9b42fdd6b6923e9b384419d72
 
 git module ai:
   url: https://github.com/echasnovski/mini.ai
