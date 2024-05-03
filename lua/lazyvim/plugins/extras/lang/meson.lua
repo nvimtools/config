@@ -11,7 +11,7 @@ return {
     "neovim/nvim-lspconfig",
     opts = {
       servers = {
-        swift_mesonls = {},
+        mesonlsp = {},
       },
     },
   },
