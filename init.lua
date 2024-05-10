@@ -53,6 +53,7 @@ local working, ret = pcall(function()
 		later(function() require('mini.pairs').setup() end)
 		later(function() require('mini.jump').setup() end)
 		later(function() require('mini.pick').setup() end)
+		later(function() require('mini.diff').setup() end)
 		later(
 			function()
 				require('mini.indentscope').setup({
