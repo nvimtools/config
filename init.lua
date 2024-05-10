@@ -44,11 +44,13 @@ local working, ret = pcall(function()
 		-- load instantly to replace netrw
 		now(function() require('mini.files').setup() end)
 
+		-- load instantly to make sure setup get triggered
+		now(function() require('mini.completion').setup() end)
+
 		later(function() require('mini.ai').setup() end)
 		later(function() require('mini.comment').setup() end)
 		later(function() require('mini.surround').setup() end)
 		later(function() require('mini.pairs').setup() end)
-		later(function() require('mini.completion').setup() end)
 		later(function() require('mini.jump').setup() end)
 		later(function() require('mini.pick').setup() end)
 		later(
