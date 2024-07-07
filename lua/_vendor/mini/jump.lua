@@ -68,17 +68,12 @@ local H = {}
 ---
 ---@param config table|nil Module config table. See |MiniJump.config|.
 ---
----@usage `require('mini.jump').setup({})` (replace `{}` with your `config` table)
+---@usage >lua
+---   require('mini.jump').setup() -- use default config
+---   -- OR
+---   require('mini.jump').setup({}) -- replace {} with your config table
+--- <
 MiniJump.setup = function(config)
-  -- TODO: Remove after Neovim<=0.7 support is dropped
-  if vim.fn.has('nvim-0.8') == 0 then
-    vim.notify(
-      '(mini.jump) Neovim<0.8 is soft deprecated (module works but not supported).'
-        .. ' It will be deprecated after next "mini.nvim" release (module might not work).'
-        .. ' Please update your Neovim version.'
-    )
-  end
-
   -- Export module
   _G.MiniJump = MiniJump
 
@@ -376,7 +371,7 @@ H.make_expr_jump = function(backward, till)
 
     vim.schedule(function()
       if H.cache.has_changed_cursor then return end
-      vim.cmd('undo' .. (vim.fn.has('nvim-0.8') == 1 and '!' or ''))
+      vim.cmd('undo!')
     end)
     return 'v<Cmd>lua MiniJump.jump()<CR>'
   end

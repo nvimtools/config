@@ -119,14 +119,11 @@
 --- before processing anything else.
 ---
 --- The recommended way of adding a plugin is by calling |MiniDeps.add()| in the
---- |init.lua| file (make sure |MiniDeps.setup()| is called prior): >
+--- |init.lua| file (make sure |MiniDeps.setup()| is called prior): >lua
 ---
 ---   local add = MiniDeps.add
 ---
 ---   -- Add to current session (install if absent)
----   add('nvim-tree/nvim-web-devicons')
----   require('nvim-web-devicons').setup()
----
 ---   add({
 ---     source = 'neovim/nvim-lspconfig',
 ---     -- Supply dependencies near target plugin
@@ -141,6 +138,7 @@
 ---     -- Perform action after every checkout
 ---     hooks = { post_checkout = function() vim.cmd('TSUpdate') end },
 ---   })
+---   -- Possible to immediately execute code which depends on the added plugin
 ---   require('nvim-treesitter.configs').setup({
 ---     ensure_installed = { 'lua', 'vimdoc' },
 ---     highlight = { enable = true },
@@ -159,9 +157,9 @@
 --- - |MiniDeps.now()| safely executes code immediately. Use it to load plugins
 ---   with UI necessary to make initial screen draw.
 --- - |MiniDeps.later()| schedules code to be safely executed later, preserving
----   order. Use it (with caution) for everything else which doesn't need precisely
----   timed effect, as it will be executed some time soon on one of the next
----   event loops. >
+---   order. Use it (with caution) for everything else which doesn't need
+---   precisely timed effect, as it will be executed some time soon on one of
+---   the next event loops. >lua
 ---
 ---   local now, later = MiniDeps.now, MiniDeps.later
 ---
@@ -353,17 +351,12 @@ local H = {}
 ---
 ---@param config table|nil Module config table. See |MiniDeps.config|.
 ---
----@usage `require('mini.deps').setup({})` (replace `{}` with your `config` table).
+---@usage >lua
+---   require('mini.deps').setup() -- use default config
+---   -- OR
+---   require('mini.deps').setup({}) -- replace {} with your config table
+--- <
 MiniDeps.setup = function(config)
-  -- TODO: Remove after Neovim<=0.7 support is dropped
-  if vim.fn.has('nvim-0.8') == 0 then
-    vim.notify(
-      '(mini.deps) Neovim<0.8 is soft deprecated (module works but not supported).'
-        .. ' It will be deprecated after next "mini.nvim" release (module might not work).'
-        .. ' Please update your Neovim version.'
-    )
-  end
-
   -- Export module
   _G.MiniDeps = MiniDeps
 
@@ -410,7 +403,6 @@ end
 --- `path.log` is a string with path containing log of operations done by module.
 --- In particular, it contains all changes done after making an update.
 --- Default: "mini-deps.log" file in "log" standard path (see |stdpath()|).
---- Note: In Neovim<0.8 it is in "data" standard path.
 ---
 --- # Silent ~
 ---
@@ -437,7 +429,7 @@ MiniDeps.config = {
 
     -- Log file
     --minidoc_replace_start log = vim.fn.stdpath('log') .. '/mini-deps.log'
-    log = vim.fn.stdpath(vim.fn.has('nvim-0.8') == 1 and 'log' or 'data') .. '/mini-deps.log',
+    log = vim.fn.stdpath('log') .. '/mini-deps.log',
     --minidoc_replace_end
   },
 
