@@ -615,9 +615,9 @@ end
 --- - Nearest match. Whichever is closest among previous and next matches.
 ---
 --- Possible values are:
---- - `'cover'` - use only covering match. Don't use either previous or
+--- - `'cover'` (default) - use only covering match. Don't use either previous or
 ---   next; report that there is no surrounding found.
---- - `'cover_or_next'` (default) - use covering match. If not found, use next.
+--- - `'cover_or_next'` - use covering match. If not found, use next.
 --- - `'cover_or_prev'` - use covering match. If not found, use previous.
 --- - `'cover_or_nearest'` - use covering match. If not found, use nearest.
 --- - `'next'` - use next match.
@@ -1837,9 +1837,8 @@ H.get_marks_pos = function(mode)
     local _, line1_indent = vim.fn.getline(pos1[1]):find('^%s*')
     pos1[2] = line1_indent
 
-    -- Move end mark to the last character (` - 2` here because `col()` returns
-    -- column right after the last 1-based column)
-    pos2[2] = vim.fn.col({ pos2[1], '$' }) - 2
+    -- Move end mark to the last non-whitespace character
+    pos2[2] = vim.fn.getline(pos2[1]):find('%s*$') - 2
   end
 
   -- Make columns 1-based instead of 0-based. This is needed because
