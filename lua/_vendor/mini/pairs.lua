@@ -281,6 +281,12 @@ end
 MiniPairs.open = function(pair, neigh_pattern)
   if H.is_disabled() or not H.neigh_match(neigh_pattern) then return pair:sub(1, 1) end
 
+  -- Temporarily redraw lazily for no cursor flicker due to `<Left>`.
+  -- This can happen in a big file with tree-sitter highlighting enabled.
+  local cache_lazyredraw = vim.o.lazyredraw
+  vim.o.lazyredraw = true
+  H.restore_lazyredraw(cache_lazyredraw)
+
   return ('%s%s'):format(pair, H.get_arrow_key('left'))
 end
 
@@ -392,6 +398,12 @@ MiniPairs.cr = function(key)
     vim.o.eventignore = 'InsertLeave,InsertLeavePre,InsertEnter,ModeChanged'
     H.restore_eventignore(cache_eventignore)
 
+    -- Temporarily redraw lazily for no cursor flicker due to `<C-o>O`.
+    -- This can happen in a big file with tree-sitter highlighting enabled.
+    local cache_lazyredraw = vim.o.lazyredraw
+    vim.o.lazyredraw = true
+    H.restore_lazyredraw(cache_lazyredraw)
+
     res = ('%s%s'):format(res, H.keys.above)
   end
 
@@ -494,10 +506,10 @@ H.apply_config = function(config)
 end
 
 H.create_autocommands = function()
-  local augroup = vim.api.nvim_create_augroup('MiniPairs', {})
+  local gr = vim.api.nvim_create_augroup('MiniPairs', {})
 
   local au = function(event, pattern, callback, desc)
-    vim.api.nvim_create_autocmd(event, { group = augroup, pattern = pattern, callback = callback, desc = desc })
+    vim.api.nvim_create_autocmd(event, { group = gr, pattern = pattern, callback = callback, desc = desc })
   end
 
   au('FileType', { 'TelescopePrompt', 'fzf' }, function() vim.b.minipairs_disable = true end, 'Disable locally')
@@ -641,5 +653,6 @@ H.map = function(mode, lhs, rhs, opts)
 end
 
 H.restore_eventignore = vim.schedule_wrap(function(val) vim.o.eventignore = val end)
+H.restore_lazyredraw = vim.schedule_wrap(function(val) vim.o.lazyredraw = val end)
 
 return MiniPairs

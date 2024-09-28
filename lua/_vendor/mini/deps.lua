@@ -366,6 +366,9 @@ MiniDeps.setup = function(config)
   -- Apply config
   H.apply_config(config)
 
+  -- Define behavior
+  H.create_autocommands()
+
   -- Create default highlighting
   H.create_default_hl()
 
@@ -710,9 +713,11 @@ MiniDeps.get_session = function()
   -- Add 'start/' plugins that are in 'rtp'. NOTE: not whole session concept is
   -- built around presence in 'rtp' to 100% ensure to preserve the order in
   -- which user called `add()`.
-  local start_path = H.get_package_path() .. '/pack/deps/start'
+  local start_path = H.full_path(H.get_package_path() .. '/pack/deps/start')
   local pattern = string.format('^%s/([^/]+)$', vim.pesc(start_path))
-  for _, path in ipairs(vim.api.nvim_list_runtime_paths()) do
+  for _, runtime_path in ipairs(vim.api.nvim_list_runtime_paths()) do
+    -- Make sure plugin path is normalized (matters on Windows)
+    local path = H.full_path(runtime_path)
     local name = string.match(path, pattern)
     if name ~= nil then add_spec({ path = path, name = name, hooks = {}, depends = {} }) end
   end
@@ -816,6 +821,11 @@ end
 
 H.get_config = function(config)
   return vim.tbl_deep_extend('force', MiniDeps.config, vim.b.minideps_config or {}, config or {})
+end
+
+H.create_autocommands = function()
+  local gr = vim.api.nvim_create_augroup('MiniDeps', {})
+  vim.api.nvim_create_autocmd('ColorScheme', { group = gr, callback = H.create_default_hl, desc = 'Ensure colors' })
 end
 
 --stylua: ignore

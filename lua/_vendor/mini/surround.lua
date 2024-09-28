@@ -487,6 +487,9 @@ MiniSurround.setup = function(config)
   -- Apply config
   H.apply_config(config)
 
+  -- Define behavior
+  H.create_autocommands()
+
   -- Create default highlighting
   H.create_default_hl()
 end
@@ -1221,6 +1224,11 @@ H.apply_config = function(config)
   --stylua: ignore end
 end
 
+H.create_autocommands = function()
+  local gr = vim.api.nvim_create_augroup('MiniSurround', {})
+  vim.api.nvim_create_autocmd('ColorScheme', { group = gr, callback = H.create_default_hl, desc = 'Ensure colors' })
+end
+
 H.create_default_hl = function() vim.api.nvim_set_hl(0, 'MiniSurround', { default = true, link = 'IncSearch' }) end
 
 H.is_disabled = function() return vim.g.minisurround_disable == true or vim.b.minisurround_disable == true end
@@ -1309,20 +1317,20 @@ end
 
 H.make_surrounding_table = function()
   -- Extend builtins with data from `config`
-  local surroundings = vim.tbl_deep_extend('force', H.builtin_surroundings, H.get_config().custom_surroundings or {})
-
-  -- Add possibly missing information from default surrounding info
-  for char, info in pairs(surroundings) do
+  local surroundings = vim.deepcopy(H.builtin_surroundings)
+  for char, spec in pairs(H.get_config().custom_surroundings or {}) do
+    local cur_spec = surroundings[char] or {}
     local default = H.get_default_surrounding_info(char)
-    surroundings[char] = vim.tbl_deep_extend('force', default, info)
+    -- NOTE: Don't use `tbl_deep_extend` to prefer full `input` arrays
+    cur_spec.input = spec.input or cur_spec.input or default.input
+    cur_spec.output = spec.output or cur_spec.output or default.output
+    surroundings[char] = cur_spec
   end
 
   -- Use default surrounding info for not supplied single character identifier
-  --stylua: ignore start
   return setmetatable(surroundings, {
     __index = function(_, key) return H.get_default_surrounding_info(key) end,
   })
-  --stylua: ignore end
 end
 
 H.get_default_surrounding_info = function(char)
@@ -1373,7 +1381,7 @@ end
 
 -- Work with finding surrounding ----------------------------------------------
 ---@param surr_spec table Composed pattern. Last item(s) - extraction template.
----@param opts table Options.
+---@param opts table|nil Options.
 ---@private
 H.find_surrounding = function(surr_spec, opts)
   if surr_spec == nil then return end
@@ -1528,8 +1536,9 @@ end
 H.get_matched_node_pairs_builtin = function(captures)
   -- Fetch treesitter data for buffer
   local lang = vim.bo.filetype
-  local ok, parser = pcall(vim.treesitter.get_parser, 0, lang)
-  if not ok then H.error_treesitter('parser', lang) end
+  -- TODO: Remove `opts.error` after compatibility with Neovim=0.11 is dropped
+  local has_parser, parser = pcall(vim.treesitter.get_parser, 0, lang, { error = false })
+  if not has_parser or parser == nil then H.error_treesitter('parser', lang) end
 
   local get_query = vim.fn.has('nvim-0.9') == 1 and vim.treesitter.query.get or vim.treesitter.get_query
   local query = get_query(lang, 'textobjects')
