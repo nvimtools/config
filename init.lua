@@ -105,9 +105,6 @@ local working, ret = pcall(function()
 			})
 
 			require('blink.cmp').setup({
-				highlight = {
-					use_nvim_cmp_as_default = true,
-				},
 				accept = { auto_brackets = { enabled = true } },
 				trigger = { signature_help = { enabled = true } },
 			})
