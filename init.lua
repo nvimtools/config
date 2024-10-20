@@ -48,9 +48,6 @@ local working, ret = pcall(function()
 		-- load instantly to replace netrw
 		now(function() require('mini.files').setup() end)
 
-		-- load instantly to make sure setup get triggered
-		now(function() require('mini.completion').setup() end)
-
 		later(function() require('mini.ai').setup() end)
 		later(function() require('mini.comment').setup() end)
 		later(function() require('mini.surround').setup() end)
@@ -83,6 +80,37 @@ local working, ret = pcall(function()
 				ensure_installed = { 'lua', 'vimdoc' },
 				highlight = { enable = true },
 			} --[[@as TSConfig|{}]])
+		end)
+
+		now(function()
+			local function build_blink(params)
+				vim.notify('Building blink.cmp', vim.log.levels.INFO)
+				local obj = vim.system({ 'cargo', 'build', '--release' }, { cwd = params.path }):wait()
+				if obj.code == 0 then
+					vim.notify('Building blink.cmp done', vim.log.levels.INFO)
+				else
+					vim.notify('Building blink.cmp failed', vim.log.levels.ERROR)
+				end
+			end
+
+			add({
+				source = 'Saghen/blink.cmp',
+				depends = {
+					'rafamadriz/friendly-snippets',
+				},
+				hooks = {
+					post_install = build_blink,
+					post_checkout = build_blink,
+				},
+			})
+
+			require('blink.cmp').setup({
+				highlight = {
+					use_nvim_cmp_as_default = true,
+				},
+				accept = { auto_brackets = { enabled = true } },
+				trigger = { signature_help = { enabled = true } },
+			})
 		end)
 
 		config()
