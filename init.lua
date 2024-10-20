@@ -107,6 +107,7 @@ Traceback:
 	require('_vendor.mini.surround').setup()
 	require('_vendor.mini.pairs').setup()
 	require('_vendor.mini.bufremove').setup()
+	require('_vendor.mini.completion').setup()
 	vim.keymap.set('n', '<leader>bd', function() require('_vendor.mini.bufremove').delete(0) end)
 	require('_vendor.mini.jump').setup()
 end
