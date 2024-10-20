@@ -5,7 +5,6 @@ local path_package = vim.fn.stdpath('data') .. '/site'
 ---@type table
 local _deps
 
----@diagnostic disable-next-line: undefined-field
 if not vim.uv.fs_stat(path_package .. '/pack/deps/start/mini.nvim') then
 	_deps = require('_vendor.mini.deps')
 	require('_vendor.mini.basics').setup()
@@ -19,7 +18,6 @@ local working, ret = pcall(function()
 	local add, now, later = MiniDeps.add, MiniDeps.now, MiniDeps.later
 
 	add('echasnovski/mini.nvim')
-	---@diagnostic disable: undefined-field
 	if
 		vim.uv.fs_stat(path_package .. '/pack/deps/opt/mini.nvim')
 		and not vim.uv.fs_stat(path_package .. '/pack/deps/start/mini.nvim')
@@ -27,7 +25,6 @@ local working, ret = pcall(function()
 		vim.fn.mkdir(path_package .. '/pack/deps/start', 'p')
 		vim.uv.fs_rename(path_package .. '/pack/deps/opt/mini.nvim', path_package .. '/pack/deps/start/mini.nvim')
 	end
-	---@diagnostic enable: undefined-field
 
 	---@type boolean, function
 	local success, config = pcall(require, 'config')
