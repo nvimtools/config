@@ -15,15 +15,15 @@ git module deps:
 
 git module basics:
   url: https://github.com/echasnovski/mini.basics
-  rev: 7d4c6982be471e902c034bea6b3fe348058196d9
+  rev: 67c10b3436d5d3b892715137f4773e71c6753b13
 
 git module completion:
   url: https://github.com/echasnovski/mini.completion
-  rev: 2b877876ec7c77973a512083e2aa3f13c61c2abe
+  rev: 6eb9546685c4e1c4af2365b87166d4afa39d8a1b
 
 git module ai:
   url: https://github.com/echasnovski/mini.ai
-  rev: 9b9b7cfa38b4871c3e44cfe89cf6d53fd40684d9
+  rev: 31c149067d38b97720d2a179619f7745a0006ecc
 
 git module comment:
   url: https://github.com/echasnovski/mini.comment
@@ -31,7 +31,7 @@ git module comment:
 
 git module bufremove:
   url: https://github.com/echasnovski/mini.bufremove
-  rev: 1ee294a97e091d3cf967974df622c0d887890dc2
+  rev: 285bdac9596ee7375db50c0f76ed04336dcd2685
 
 git module jump:
   url: https://github.com/echasnovski/mini.jump
