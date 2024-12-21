@@ -23,7 +23,7 @@ git module completion:
 
 git module ai:
   url: https://github.com/echasnovski/mini.ai
-  rev: 31c149067d38b97720d2a179619f7745a0006ecc
+  rev: ebb04799794a7f94628153991e6334c3304961b8
 
 git module comment:
   url: https://github.com/echasnovski/mini.comment
@@ -35,7 +35,7 @@ git module bufremove:
 
 git module jump:
   url: https://github.com/echasnovski/mini.jump
-  rev: cd429d8d631a2fa766e60b72ee6fbff78afa3fda
+  rev: bb93d998c9db6936697746330411f5fb9957145e
 
 git module pairs:
   url: https://github.com/echasnovski/mini.pairs
@@ -43,7 +43,7 @@ git module pairs:
 
 git module surround:
   url: https://github.com/echasnovski/mini.surround
-  rev: 48a9795c9d352c771e1ab5dedab6063c0a2df037
+  rev: aa5e245829dd12d8ff0c96ef11da28681d6049aa
 
 rule mini:
   export: lua/mini/

@@ -102,8 +102,10 @@ local working, ret = pcall(function()
 			})
 
 			require('blink.cmp').setup({
-				accept = { auto_brackets = { enabled = true } },
-				trigger = { signature_help = { enabled = true } },
+				completion = {
+					accept = { auto_brackets = { enabled = true } },
+				},
+				signature = { enabled = true },
 			})
 		end)
 
