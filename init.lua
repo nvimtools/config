@@ -105,6 +105,7 @@ local working, ret = pcall(function()
 				completion = {
 					accept = { auto_brackets = { enabled = true } },
 				},
+				sources = { cmdline = {} },
 				signature = { enabled = true },
 			})
 		end)
