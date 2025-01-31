@@ -18,7 +18,7 @@ or `git clone`.
 ## license
 
     SPDX-License-Identifier: MIT
-    SPDX-FileCopyright-Text: 2024 Zephyr Lykos <self@mochaa.ws>
+    SPDX-FileCopyrightText: 2024 Zephyr Lykos <self@mochaa.ws>
 
 [^1]: in case you really need one:
 
