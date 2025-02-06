@@ -23,7 +23,7 @@ git module completion:
 
 git module ai:
   url: https://github.com/echasnovski/mini.ai
-  rev: 343c507d8e8c2dd255a5e5a383ff8f1acc11d79c
+  rev: 25f598f5bcfa247de0be783882d0e02ae5432eb1
 
 git module comment:
   url: https://github.com/echasnovski/mini.comment

@@ -1022,15 +1022,16 @@ MiniAi.select_textobject = function(ai_type, id, opts)
 
   pcall(function()
     -- Do nothing in Operator-pending mode for empty region (except `c`, `d`,
-    -- or "replace" from 'mini.operators'). These are hand picked because they
+    -- or selected "replace" operators). These are hand picked because they
     -- completely remove selected text, which is necessary for currently only
     -- possible empty region selection implementation.
     local is_empty_opending = tobj_is_empty and opts.operator_pending
-    local is_minioperators_replace = vim.v.operator == 'g@' and vim.o.operatorfunc:find('MiniOperators%.replace') ~= nil
-    local is_allowed_empty_opending = vim.v.operator == 'c' or vim.v.operator == 'd' or is_minioperators_replace
-    if is_empty_opending and not is_allowed_empty_opending then
-      H.message('Textobject region is empty. Nothing is done.')
-      return
+    if is_empty_opending then
+      local is_allowed_empty_opending = vim.v.operator == 'c'
+        or vim.v.operator == 'd'
+        or (vim.v.operator == 'g@' and vim.o.operatorfunc:find('MiniOperators%.replace') ~= nil)
+        or (vim.v.operator == 'g@' and vim.o.operatorfunc:find('substitute') ~= nil)
+      if not is_allowed_empty_opending then return H.message('Textobject region is empty. Nothing is done.') end
     end
 
     -- Allow setting cursor past line end (allows collapsing multiline region)
@@ -1042,17 +1043,17 @@ MiniAi.select_textobject = function(ai_type, id, opts)
     vim.o.virtualedit = 'onemore'
 
     -- Open enough folds to show left and right edges
-    set_cursor(tobj.from)
-    vim.cmd('normal! zv')
     set_cursor(tobj.to)
     vim.cmd('normal! zv')
-
-    -- Respect exclusive selection (including when selecting end of line)
-    if vim.o.selection == 'exclusive' then vim.cmd('set whichwrap=l | normal! l') end
+    set_cursor(tobj.from)
+    vim.cmd('normal! zv')
 
     -- Start selection
     vim.cmd('normal! ' .. vis_mode)
-    set_cursor(tobj.from)
+    set_cursor(tobj.to)
+
+    -- Respect exclusive selection (including when selecting end of line)
+    if vim.o.selection == 'exclusive' then vim.cmd('set whichwrap=l | normal! l') end
 
     if is_empty_opending then
       -- Add single space (without triggering events) and visually select it.
