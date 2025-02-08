@@ -30,8 +30,8 @@
 ---       balanced brackets (open - with whitespace pad, close - without), in
 ---       "output" - left and right parts of brackets.
 ---     - '?' - interactive. Prompts user to enter left and right parts.
----     - All other alphanumeric, punctuation, or space characters represent
----       surrounding with identical left and right parts.
+---     - All other single character identifiers (supported by |getcharstr()|)
+---       represent surrounding with identical left and right parts.
 ---
 --- - Configurable search methods to find not only covering but possibly next,
 ---   previous, or nearest surrounding. See more in |MiniSurround.config|.
@@ -545,8 +545,8 @@ end
 ---
 --- User can define own surroundings by supplying `config.custom_surroundings`.
 --- It should be a **table** with keys being single character surrounding
---- identifier and values - surround specification (see
---- |MiniSurround-surround-specification|).
+--- identifier (supported by |getcharstr()|) and values - surround specification
+--- (see |MiniSurround-surround-specification|).
 ---
 --- General recommendations:
 --- - In `config.custom_surroundings` only some data can be defined (like only
@@ -555,6 +555,8 @@ end
 ---   specification is helpful when user input is needed (like asking for
 ---   function name). Use |input()| or |MiniSurround.user_input()|. Return
 ---   `nil` to stop any current surround operation.
+--- - Keys should use character representation which can be |getcharstr()| output.
+---   For example, `'\r'` and not `'<CR>'`.
 ---
 --- Examples of using `config.custom_surroundings` (see more examples at
 --- |MiniSurround.gen_spec|): >lua
@@ -1032,26 +1034,25 @@ MiniSurround.gen_spec.input.treesitter = function(captures, opts)
   captures = H.prepare_captures(captures)
 
   return function()
-    -- Get array of matched treesitter nodes
     local has_nvim_treesitter = pcall(require, 'nvim-treesitter') and pcall(require, 'nvim-treesitter.query')
-    local node_pair_querier = (has_nvim_treesitter and opts.use_nvim_treesitter) and H.get_matched_node_pairs_plugin
-      or H.get_matched_node_pairs_builtin
-    local matched_node_pairs = node_pair_querier(captures)
+    local range_pair_querier = (has_nvim_treesitter and opts.use_nvim_treesitter) and H.get_matched_range_pairs_plugin
+      or H.get_matched_range_pairs_builtin
+    local matched_range_pairs = range_pair_querier(captures)
 
     -- Return array of region pairs
-    return vim.tbl_map(function(node_pair)
-      -- `node:range()` returns 0-based numbers for end-exclusive region
-      local left_from_line, left_from_col, right_to_line, right_to_col = node_pair.outer:range()
+    return vim.tbl_map(function(range_pair)
+      -- Range is an array with 0-based numbers for end-exclusive region
+      local left_from_line, left_from_col, right_to_line, right_to_col = unpack(range_pair.outer)
       local left_from = { line = left_from_line + 1, col = left_from_col + 1 }
       local right_to = { line = right_to_line + 1, col = right_to_col }
 
       local left_to, right_from
-      if node_pair.inner == nil then
+      if range_pair.inner == nil then
         left_to = right_to
         right_from = H.pos_to_right(right_to)
         right_to = nil
       else
-        local left_to_line, left_to_col, right_from_line, right_from_col = node_pair.inner:range()
+        local left_to_line, left_to_col, right_from_line, right_from_col = unpack(range_pair.inner)
         left_to = { line = left_to_line + 1, col = left_to_col + 1 }
         right_from = { line = right_from_line + 1, col = right_from_col }
         -- Take into account that inner capture should be both edges exclusive
@@ -1059,7 +1060,7 @@ MiniSurround.gen_spec.input.treesitter = function(captures, opts)
       end
 
       return { left = { from = left_from, to = left_to }, right = { from = right_from, to = right_to } }
-    end, matched_node_pairs)
+    end, matched_range_pairs)
   end
 end
 
@@ -1387,9 +1388,8 @@ H.find_surrounding = function(surr_spec, opts)
 
   local region_pair = H.find_surrounding_region_pair(surr_spec, opts)
   if region_pair == nil then
-    local msg = ([[No surrounding '%s%s' found within %d line%s and `config.search_method = '%s'`.]]):format(
-      opts.n_times > 1 and opts.n_times or '',
-      surr_spec.id,
+    local msg = ([[No surrounding %s found within %d line%s and `config.search_method = '%s'`.]]):format(
+      vim.inspect((opts.n_times > 1 and opts.n_times or '') .. surr_spec.id),
       opts.n_lines,
       opts.n_lines > 1 and 's' or '',
       opts.search_method
@@ -1495,40 +1495,20 @@ H.prepare_captures = function(captures)
   return { outer = captures.outer, inner = captures.inner }
 end
 
-H.get_matched_node_pairs_plugin = function(captures)
+H.get_matched_range_pairs_plugin = function(captures)
   local ts_queries = require('nvim-treesitter.query')
-  local ts_parsers = require('nvim-treesitter.parsers')
+  local outer_matches = ts_queries.get_capture_matches_recursively(0, captures.outer, 'textobjects')
 
-  -- This is a modified version of `ts_queries.get_capture_matches_recursively`
-  -- source code which keeps track of match language
-  local matches = {}
-  local parser = ts_parsers.get_parser(0)
-  if parser then
-    parser:for_each_tree(function(tree, lang_tree)
-      local lang = lang_tree:lang()
-      local lang_matches = ts_queries.get_capture_matches(0, captures.outer, 'textobjects', tree:root(), lang)
-      for _, m in pairs(lang_matches) do
-        m.lang = lang
-      end
-      vim.list_extend(matches, lang_matches)
-    end)
-  end
-
-  return vim.tbl_map(
-    function(match)
-      local node_outer = match.node
-      -- Pick inner node as the biggest node matching inner query. This is
-      -- needed because query output is not quaranteed to come in order.
-      local matches_inner = ts_queries.get_capture_matches(0, captures.inner, 'textobjects', node_outer, match.lang)
-      local nodes_inner = vim.tbl_map(function(x) return x.node end, matches_inner)
-      return { outer = node_outer, inner = H.get_biggest_node(nodes_inner) }
-    end,
-    -- This call should handle multiple languages in buffer
-    matches
-  )
+  -- Pick inner range as the biggest range for node matching inner query. This
+  -- is needed because query output is not quaranteed to come in order, so just
+  -- picking first one is not enough.
+  return vim.tbl_map(function(m)
+    local inner_matches = ts_queries.get_capture_matches(0, captures.inner, 'textobjects', m.node, nil)
+    return { outer = H.get_match_range(m.node, m.metadata), inner = H.get_biggest_range(inner_matches) }
+  end, outer_matches)
 end
 
-H.get_matched_node_pairs_builtin = function(captures)
+H.get_matched_range_pairs_builtin = function(captures)
   -- Fetch treesitter data for buffer
   local lang = vim.bo.filetype
   -- TODO: Remove `opts.error` after compatibility with Neovim=0.11 is dropped
@@ -1539,43 +1519,45 @@ H.get_matched_node_pairs_builtin = function(captures)
   local query = get_query(lang, 'textobjects')
   if query == nil then H.error_treesitter('query', lang) end
 
-  -- Remove leading '@'
-  local capture_outer, capture_inner = captures.outer:sub(2), captures.inner:sub(2)
-
-  -- Compute nodes matching outer capture
-  local nodes_outer = {}
+  -- Compute matches for outer capture
+  local outer_matches = {}
   for _, tree in ipairs(parser:trees()) do
-    vim.list_extend(nodes_outer, H.get_builtin_matched_nodes(capture_outer, tree:root(), query))
+    vim.list_extend(outer_matches, H.get_builtin_matches(captures.outer:sub(2), tree:root(), query))
   end
 
-  -- Make node pairs with biggest node matching inner capture inside outer node
-  return vim.tbl_map(function(node_outer)
-    local nodes_inner = H.get_builtin_matched_nodes(capture_inner, node_outer, query)
-    return { outer = node_outer, inner = H.get_biggest_node(nodes_inner) }
-  end, nodes_outer)
+  -- Pick inner range as the biggest range for node matching inner query
+  return vim.tbl_map(function(m)
+    local inner_matches = H.get_builtin_matches(captures.inner:sub(2), m.node, query)
+    return { outer = H.get_match_range(m.node, m.metadata), inner = H.get_biggest_range(inner_matches) }
+  end, outer_matches)
 end
 
-H.get_builtin_matched_nodes = function(capture, root, query)
+H.get_builtin_matches = function(capture, root, query)
   local res = {}
-  for capture_id, node, _ in query:iter_captures(root, 0) do
-    if query.captures[capture_id] == capture then table.insert(res, node) end
+  for capture_id, node, metadata in query:iter_captures(root, 0) do
+    if query.captures[capture_id] == capture then
+      table.insert(res, { node = node, metadata = (metadata or {})[capture_id] or {} })
+    end
   end
   return res
 end
 
-H.get_biggest_node = function(node_arr)
-  local best_node, best_byte_count = nil, -math.huge
-  for _, node in ipairs(node_arr) do
-    local _, _, start_byte = node:start()
-    local _, _, end_byte = node:end_()
+H.get_biggest_range = function(match_arr)
+  local best_range, best_byte_count = nil, -math.huge
+  for _, match in ipairs(match_arr) do
+    local range = H.get_match_range(match.node, match.metadata)
+    local start_byte = vim.fn.line2byte(range[1] + 1) + range[2]
+    local end_byte = vim.fn.line2byte(range[3] + 1) + range[4] - 1
     local byte_count = end_byte - start_byte + 1
     if best_byte_count < byte_count then
-      best_node, best_byte_count = node, byte_count
+      best_range, best_byte_count = range, byte_count
     end
   end
 
-  return best_node
+  return best_range
 end
+
+H.get_match_range = function(node, metadata) return (metadata or {}).range and metadata.range or { node:range() } end
 
 H.error_treesitter = function(failed_get, lang)
   local bufnr = vim.api.nvim_get_current_buf()
@@ -1938,12 +1920,6 @@ H.user_surround_id = function(sur_type)
 
   -- Terminate if couldn't get input (like with <C-c>) or it is `<Esc>`
   if not ok or char == '\27' then return nil end
-
-  if char:find('^[%w%p%s]$') == nil then
-    H.message('Input must be single character: alphanumeric, punctuation, or space.')
-    return nil
-  end
-
   return char
 end
 

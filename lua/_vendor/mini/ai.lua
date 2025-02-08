@@ -25,7 +25,7 @@
 ---     - Argument.
 ---     - Tag.
 ---     - Derived from user prompt.
----     - Default for punctuation, digit, space, or tab.
+---     - Default for anything but Latin letters (to fall back to |text-objects|).
 ---
 ---     For more textobjects see |MiniExtra.gen_ai_spec|.
 ---
@@ -85,8 +85,7 @@
 ---       textobjects. 'mini.ai' does it via |MiniAi.find_textobject()|.
 ---     - Has no implementation of "moving to edge of textobject". 'mini.ai'
 ---       does it via |MiniAi.move_cursor()| and `g[` and `g]` default mappings.
----     - Has elaborate ways to control searching of the next textobject.
----       'mini.ai' relies on handful of 'config.search_method'.
+---     - Both implement the notion of manual "next"/"last" search directions.
 ---     - Implements `A`, `I` operators. 'mini.ai' does not by design: it is
 ---       assumed to be a property of textobject, not operator.
 ---     - Doesn't implement "function call" and "user prompt" textobjects.
@@ -98,8 +97,8 @@
 ---     - Along with textobject functionality provides a curated and maintained
 ---       set of popular textobject queries for many languages (which can power
 ---       |MiniAi.gen_spec.treesitter()| functionality).
----     - Operates with custom treesitter directives (see
----       |lua-treesitter-directives|) allowing more fine-tuned textobjects.
+---     - Both support working with |lua-treesitter-directives| allowing more
+---       fine-tuned textobjects.
 ---     - Implements only textobjects based on treesitter.
 ---     - Doesn't support |v:count|.
 ---     - Doesn't support multiple search method (basically, only 'cover').
@@ -117,8 +116,8 @@
 ---
 --- This table describes all builtin textobjects along with what they
 --- represent. Explanation:
---- - `Key` represents the textobject identifier: single alphanumeric,
----   punctuation, space, or tab character which should be typed after `a`/`i`.
+--- - `Key` represents the textobject identifier: single character which should
+---   be typed after `a`/`i`.
 --- - `Name` is a description of textobject.
 --- - `Example line` contains a string for which examples are constructed. The
 ---   `*` denotes the cursor position.
@@ -162,18 +161,15 @@
 ---  |---|---------------|-1234567890123456-|--------|--------|--------|--------|
 ---  | a |   Argument    | f(*a, g(b, c) )  | [3;5]  | [3;4]  | [5;14] | [7;13] |
 ---  |---|---------------|-1234567890123456-|--------|--------|--------|--------|
----  |   |    Default    |                  |        |        |        |        |
----  |   |   (digits,    | aa_*b__cc___     | [4;7]  | [4;5]  | [8;12] | [8;9]  |
----  |   | punctuation,  | (example for _)  |        |        |        |        |
----  |   | or whitespace)|                  |        |        |        |        |
+---  |   |    Default    | aa_*b__cc___     | [4;7]  | [4;5]  | [8;12] | [8;9]  |
+---  |   |   (typed _)   |                  |        |        |        |        |
 ---  |---|---------------|-1234567890123456-|--------|--------|--------|--------|
 --- <
 --- Notes:
 --- - All examples assume default `config.search_method`.
 --- - Open brackets differ from close brackets by how they treat inner edge
 ---   whitespace for `i` textobject: open ignores it, close - includes.
---- - Default textobject is activated for identifiers from digits (0, ..., 9),
----   punctuation (like `_`, `*`, `,`, etc.), whitespace (space, tab, etc.).
+--- - Default textobject is activated for identifiers which are not Latin letters.
 ---   They are designed to be treated as separators, so include only right edge
 ---   in `a` textobject. To include both edges, use custom textobjects
 ---   (see |MiniAi-textobject-specification| and |MiniAi.config|). Note:
@@ -432,11 +428,17 @@ end
 ---
 --- ## Custom textobjects ~
 ---
---- Each named entry of `config.custom_textobjects` is a textobject with
---- that identifier and specification (see |MiniAi-textobject-specification|).
---- They are also used to override builtin ones (|MiniAi-textobject-builtin|).
---- Supply non-valid input (not in specification format) to disable module's
---- builtin textobject in favor of external or Neovim's builtin mapping.
+--- User can define own textobjects by supplying `config.custom_textobjects`.
+--- It should be a table with keys being single character textobject identifier
+--- (supported by |getcharstr()|) and values - textobject specification
+--- (see |MiniAi-textobject-specification|).
+---
+--- General recommendations:
+--- - This can be used to override builtin ones (|MiniAi-textobject-builtin|).
+---   Supply non-valid input (not in specification format) to disable module's
+---   builtin textobject in favor of external or Neovim's builtin mapping.
+--- - Keys should use character representation which can be |getcharstr()| output.
+---   For example, `'\r'` and not `'<CR>'`.
 ---
 --- Examples:
 --- >lua
@@ -966,16 +968,15 @@ MiniAi.gen_spec.treesitter = function(ai_captures, opts)
     -- Get array of matched treesitter nodes
     local target_captures = ai_captures[ai_type]
     local has_nvim_treesitter = pcall(require, 'nvim-treesitter') and pcall(require, 'nvim-treesitter.query')
-    local node_querier = (has_nvim_treesitter and opts.use_nvim_treesitter) and H.get_matched_nodes_plugin
-      or H.get_matched_nodes_builtin
-    local matched_nodes = node_querier(target_captures)
+    local range_querier = (has_nvim_treesitter and opts.use_nvim_treesitter) and H.get_matched_ranges_plugin
+      or H.get_matched_ranges_builtin
+    local matched_ranges = range_querier(target_captures)
 
     -- Return array of regions
-    return vim.tbl_map(function(node)
-      local line_from, col_from, line_to, col_to = node:range()
-      -- `node:range()` returns 0-based numbers for end-exclusive region
-      return { from = { line = line_from + 1, col = col_from + 1 }, to = { line = line_to + 1, col = col_to } }
-    end, matched_nodes)
+    return vim.tbl_map(function(range)
+      -- Ranges are 0-based numbers for end-exclusive region
+      return { from = { line = range[1] + 1, col = range[2] + 1 }, to = { line = range[3] + 1, col = range[4] } }
+    end, matched_ranges)
   end
 end
 
@@ -1292,11 +1293,11 @@ H.make_textobject_table = function()
   -- because only top level keys should be merged.
   local textobjects = vim.tbl_extend('force', H.builtin_textobjects, H.get_config().custom_textobjects or {})
 
-  -- Use default textobject pattern only for some characters: punctuation,
-  -- whitespace, digits.
+  -- Use default textobject pattern for anything excluding Latin characters, as
+  -- they are needed to fall back to Neovim's built-in textobjects (like `aw`)
   return setmetatable(textobjects, {
     __index = function(_, key)
-      if not (type(key) == 'string' and string.find(key, '^[%p%s%d]$')) then return end
+      if type(key) == 'string' and string.find(key, '^%a$') ~= nil then return end
       local key_esc = vim.pesc(key)
       -- Use `%f[]` to ensure maximum stretch in both directions. Include only
       -- right edge in `a` textobject.
@@ -1495,16 +1496,13 @@ H.prepare_ai_captures = function(ai_captures)
   return { a = prepare(ai_captures.a), i = prepare(ai_captures.i) }
 end
 
-H.get_matched_nodes_plugin = function(captures)
+H.get_matched_ranges_plugin = function(captures)
   local ts_queries = require('nvim-treesitter.query')
-  return vim.tbl_map(
-    function(match) return match.node end,
-    -- This call should handle multiple languages in buffer
-    ts_queries.get_capture_matches_recursively(0, captures, 'textobjects')
-  )
+  local matches = ts_queries.get_capture_matches_recursively(0, captures, 'textobjects')
+  return vim.tbl_map(function(m) return H.get_match_range(m.node, m.metadata) end, matches)
 end
 
-H.get_matched_nodes_builtin = function(captures)
+H.get_matched_ranges_builtin = function(captures)
   -- Fetch treesitter data for buffer
   local lang = vim.bo.filetype
   -- TODO: Remove `opts.error` after compatibility with Neovim=0.11 is dropped
@@ -1515,16 +1513,22 @@ H.get_matched_nodes_builtin = function(captures)
   local query = get_query(lang, 'textobjects')
   if query == nil then H.error_treesitter('query', lang) end
 
-  -- Compute matched captures
-  captures = vim.tbl_map(function(x) return x:sub(2) end, captures)
+  -- Compute ranges of matched captures
+  local capture_is_requested = vim.tbl_map(function(c) return vim.tbl_contains(captures, '@' .. c) end, query.captures)
+
   local res = {}
   for _, tree in ipairs(parser:trees()) do
-    for capture_id, node, _ in query:iter_captures(tree:root(), 0) do
-      if vim.tbl_contains(captures, query.captures[capture_id]) then table.insert(res, node) end
+    for capture_id, node, metadata in query:iter_captures(tree:root(), 0) do
+      if capture_is_requested[capture_id] then
+        metadata = (metadata or {})[capture_id] or {}
+        table.insert(res, H.get_match_range(node, metadata))
+      end
     end
   end
   return res
 end
+
+H.get_match_range = function(node, metadata) return (metadata or {}).range and metadata.range or { node:range() } end
 
 H.error_treesitter = function(failed_get, lang)
   local bufnr = vim.api.nvim_get_current_buf()
@@ -1888,12 +1892,6 @@ H.user_textobject_id = function(ai_type)
 
   -- Terminate if couldn't get input (like with <C-c>) or it is `<Esc>`
   if not ok or char == '\27' then return nil end
-
-  if char:find('^[%w%p \t]$') == nil then
-    H.message('Input must be single character: alphanumeric, punctuation, space, or tab.')
-    return nil
-  end
-
   return char
 end
 
