@@ -65,7 +65,7 @@ local working, ret = pcall(function()
 		later(function() require('mini.cursorword').setup() end)
 		later(function()
 			require('mini.bufremove').setup()
-			vim.keymap.set('n', '<leader>bd', function() require('mini.bufremove').delete(0) end)
+			vim.keymap.set('n', '<Leader>bd', function() require('mini.bufremove').delete(0) end)
 		end)
 		later(function() require('mini.bracketed').setup() end)
 
@@ -136,6 +136,6 @@ Traceback:
 	require('_vendor.mini.pairs').setup()
 	require('_vendor.mini.bufremove').setup()
 	require('_vendor.mini.completion').setup()
-	vim.keymap.set('n', '<leader>bd', function() require('_vendor.mini.bufremove').delete(0) end)
+	vim.keymap.set('n', '<Leader>bd', function() require('_vendor.mini.bufremove').delete(0) end)
 	require('_vendor.mini.jump').setup()
 end
