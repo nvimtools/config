@@ -43,7 +43,7 @@ git module pairs:
 
 git module surround:
   url: https://github.com/echasnovski/mini.surround
-  rev: f40be56134835421061bf32c3702de9a29fb789c
+  rev: f90069c7441a5fb04c3de42eacf93e16b64dd3eb
 
 rule mini:
   export: lua/mini/
