@@ -11,7 +11,7 @@ imports:
 
 git module deps:
   url: https://github.com/echasnovski/mini.deps
-  rev: f9c3bb7eac30a921c820350d2ff518ae8c1f35b4
+  rev: 92cee41eb5e9f195f132423ea32bd4ae6f0c0ec5
 
 git module basics:
   url: https://github.com/echasnovski/mini.basics
@@ -27,7 +27,7 @@ git module ai:
 
 git module comment:
   url: https://github.com/echasnovski/mini.comment
-  rev: 5bd72d50d36f4c0fd531adc409715a75a2c984da
+  rev: 264b8a63edd5a9a41d5361a1d52c13131c3c51a2
 
 git module bufremove:
   url: https://github.com/echasnovski/mini.bufremove
