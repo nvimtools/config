@@ -363,20 +363,12 @@ end
 MiniCompletion.completefunc_lsp = function(findstart, base)
   -- Early return
   if not H.has_lsp_clients('completionProvider') or H.completion.lsp.status == 'sent' then
-    if findstart == 1 then return -3 end
-    return {}
+    return findstart == 1 and -3 or {}
   end
 
   -- NOTE: having code for request inside this function enables its use
-  -- directly with `<C-x><...>`.
+  -- directly with `<C-x><...>` and as a reaction to `<BS>`.
   if H.completion.lsp.status ~= 'received' then
-    local current_id = H.completion.lsp.id + 1
-    H.completion.lsp.id = current_id
-    H.completion.lsp.status = 'sent'
-
-    local bufnr = vim.api.nvim_get_current_buf()
-    local params = H.make_position_params()
-
     -- NOTE: it is CRUCIAL to make LSP request on the first call to
     -- 'complete-function' (as in Vim's help). This is due to the fact that
     -- cursor line and position are different on the first and second calls to
@@ -384,33 +376,19 @@ MiniCompletion.completefunc_lsp = function(findstart, base)
     -- of the line '  he', cursor position on the first call will be
     -- (<linenum>, 4) and line will be '  he' but on the second call -
     -- (<linenum>, 2) and '  ' (because 2 is a column of completion start).
-    -- This request is executed only on second call because it returns `-3` on
+    --
+    -- This request is not executed on second call because it returns `-3` on
     -- first call (which means cancel and leave completion mode).
-    -- NOTE: using `buf_request_all()` (instead of `buf_request()`) to easily
-    -- handle possible fallback and to have all completion suggestions be
-    -- filtered with one `base` in the other route of this function. Anyway,
-    -- the most common situation is with one attached LSP client.
-    local cancel_fun = vim.lsp.buf_request_all(bufnr, 'textDocument/completion', params, function(result)
-      if not H.is_lsp_current(H.completion, current_id) then return end
+    H.make_completion_request()
 
-      H.completion.lsp.status = 'received'
-      H.completion.lsp.result = result
-
-      -- Trigger LSP completion to take 'received' route
-      H.trigger_lsp()
-    end)
-
-    -- Cache cancel function to disable requests when they are not needed
-    H.completion.lsp.cancel_fun = cancel_fun
-
-    -- End completion and wait for LSP callback
-    if findstart == 1 then return -3 end
-    return {}
+    -- End completion and wait for LSP callback to re-trigger this
+    return findstart == 1 and -3 or {}
   else
     if findstart == 1 then return H.get_completion_start(H.completion.lsp.result) end
 
-    local process_items = H.get_config().lsp_completion.process_items
+    local process_items, is_incomplete = H.get_config().lsp_completion.process_items, false
     local words = H.process_lsp_response(H.completion.lsp.result, function(response, client_id)
+      is_incomplete = is_incomplete or response.isIncomplete
       -- Response can be `CompletionList` with 'items' field or `CompletionItem[]`
       local items = H.table_get(response, { 'items' }) or response
       if type(items) ~= 'table' then return {} end
@@ -418,7 +396,7 @@ MiniCompletion.completefunc_lsp = function(findstart, base)
       return H.lsp_completion_response_items_to_complete_items(items, client_id)
     end)
 
-    H.completion.lsp.status = 'done'
+    H.completion.lsp.status = is_incomplete and 'done-isincomplete' or 'done'
 
     -- Maybe trigger fallback action
     if vim.tbl_isempty(words) and H.completion.fallback then return H.trigger_fallback() end
@@ -460,7 +438,7 @@ H.keys = {
 -- Field `lsp` is a table describing state of all used LSP requests. It has the
 -- following structure:
 -- - id: identifier (consecutive numbers).
--- - status: status. One of 'sent', 'received', 'done', 'canceled'.
+-- - status: one of 'sent', 'received', 'done', 'done-isincomplete', 'canceled'
 -- - result: result of request.
 -- - cancel_fun: function which cancels current request.
 
@@ -600,8 +578,9 @@ H.auto_completion = function()
 
   H.completion.timer:stop()
 
-  local char_is_trigger = H.is_lsp_trigger(vim.v.char, 'completion')
-  if char_is_trigger then
+  local is_incomplete = H.completion.lsp.status == 'done-isincomplete'
+  local force = H.is_lsp_trigger(vim.v.char, 'completion') or is_incomplete
+  if force then
     -- If character is LSP trigger, force fresh LSP completion later
     -- Check LSP trigger before checking for pumvisible because it should be
     -- forced even if there are visible candidates
@@ -619,7 +598,7 @@ H.auto_completion = function()
   end
 
   -- Start non-forced completion with fallback or forced LSP source for trigger
-  H.completion.fallback, H.completion.force = not char_is_trigger, char_is_trigger
+  H.completion.fallback, H.completion.force = not force, force
 
   -- Cache id of Insert mode "text changed" event for a later tracking (reduces
   -- false positive delayed triggers). The intention is to trigger completion
@@ -633,13 +612,11 @@ H.auto_completion = function()
   -- If completion was requested after 'lsp' source exhausted itself (there
   -- were matches on typing start, but they disappeared during filtering), call
   -- fallback immediately.
-  if H.completion.source == 'lsp' then
-    H.trigger_fallback()
-    return
-  end
+  if H.completion.source == 'lsp' then return H.trigger_fallback() end
 
-  -- Using delay (of debounce type) actually improves user experience
-  -- as it allows fast typing without many popups.
+  -- Debounce delay improves experience (can type fast without many popups)
+  -- Request immediately if improving incomplete suggestions (less flickering)
+  if is_incomplete then return H.trigger_twostep() end
   H.completion.timer:start(H.get_config().delay.completion, 0, vim.schedule_wrap(H.trigger_twostep))
 end
 
@@ -679,6 +656,11 @@ H.auto_signature = function()
 end
 
 H.on_completedonepre = function()
+  -- Do nothing if it is triggered inside `trigger_lsp()` as a result of
+  -- emulating 'completefunc'/'omnifunc' keys. This can happen if popup is
+  -- visible and pressing keys first hides it with 'CompleteDonePre' event.
+  if H.completion.lsp.status == 'received' then return end
+
   -- Try to apply additional text edits
   H.apply_additional_text_edits()
 
@@ -733,12 +715,20 @@ H.trigger_lsp = function()
   --   "done", it will once make whole LSP request. Having check for visible
   --   popup should prevent here the call to complete-function.
 
-  -- When `force` is `true` then presence of popup shouldn't matter.
-  local no_popup = H.completion.force or (not H.pumvisible())
-  if no_popup and vim.fn.mode() == 'i' then
-    local key = H.keys[H.get_config().lsp_completion.source_func]
-    vim.api.nvim_feedkeys(key, 'n', false)
-  end
+  -- Do not trigger if not needed and/or allowed
+  if vim.fn.mode() ~= 'i' or (H.pumvisible() and not H.completion.force) then return end
+
+  -- Overall idea: first make LSP request and re-trigger this same function
+  -- inside its callback to take the "received" route. This reduces flickering
+  -- in case popup is visible (like for `isIncomplete` and trigger characters)
+  -- as pressing 'completefunc'/'omnifunc' keys first hides completion menu.
+  -- There are still minor visual defects: typing new character reduces number
+  -- of matched items which can visually shrink popup while later increase it
+  -- again after LSP response is received. This is usually fine (especially
+  -- with not huge 'pumheight').
+  if H.completion.lsp.status ~= 'received' then return H.make_completion_request() end
+  local keys = H.keys[H.get_config().lsp_completion.source_func]
+  vim.api.nvim_feedkeys(keys, 'n', false)
 end
 
 H.trigger_fallback = function()
@@ -767,6 +757,7 @@ H.stop_completion = function(keep_source)
   H.completion.timer:stop()
   H.cancel_lsp({ H.completion })
   H.completion.fallback, H.completion.force = true, false
+  if H.completion.lsp.status == 'done-isincomplete' then H.completion.lsp.status = 'done' end
   if not keep_source then H.completion.source = nil end
 end
 
@@ -852,6 +843,30 @@ end
 H.is_lsp_current = function(cache, id) return cache.lsp.id == id and cache.lsp.status == 'sent' end
 
 -- Completion -----------------------------------------------------------------
+H.make_completion_request = function()
+  local current_id = H.completion.lsp.id + 1
+  H.completion.lsp.id = current_id
+  H.completion.lsp.status = 'sent'
+
+  local buf_id, params = vim.api.nvim_get_current_buf(), H.make_position_params()
+  -- NOTE: use `buf_request_all()` (instead of `buf_request()`) to easily
+  -- handle possible fallback and to have all completion suggestions be later
+  -- filtered with one `base`. Anyway, the most common situation is with one
+  -- attached LSP client.
+  local cancel_fun = vim.lsp.buf_request_all(buf_id, 'textDocument/completion', params, function(result)
+    if not H.is_lsp_current(H.completion, current_id) then return end
+
+    H.completion.lsp.status = 'received'
+    H.completion.lsp.result = result
+
+    -- Trigger LSP completion to use completefunc/omnifunc route
+    H.trigger_lsp()
+  end)
+
+  -- Cache cancel function to disable requests when they are not needed
+  H.completion.lsp.cancel_fun = cancel_fun
+end
+
 -- This is a truncated version of
 -- `vim.lsp.util.text_document_completion_list_to_complete_items` which does
 -- not filter and sort items.
@@ -862,19 +877,15 @@ H.lsp_completion_response_items_to_complete_items = function(items, client_id)
 
   local res, item_kinds = {}, vim.lsp.protocol.CompletionItemKind
   for _, item in pairs(items) do
-    -- Documentation info
-    local docs = item.documentation
-    local info = H.table_get(docs, { 'value' })
-    if not info and type(docs) == 'string' then info = docs end
-    info = info or ''
-
+    local label_details, menu = item.labelDetails, nil
+    if label_details ~= nil then menu = (label_details.detail or '') .. (label_details.description or '') end
     table.insert(res, {
       word = H.get_completion_word(item),
       abbr = item.label,
       kind = item_kinds[item.kind] or 'Unknown',
       kind_hlgroup = item.kind_hlgroup,
-      menu = item.detail or '',
-      info = info,
+      menu = menu,
+      -- Do not set `info` field in favor of trying to first resolve it
       icase = 1,
       dup = 1,
       empty = 1,
@@ -950,81 +961,75 @@ H.show_info_window = function()
   local event = H.info.event
   if not event then return end
 
-  -- Try first to take lines from LSP request result.
-  local lines
-  if H.info.lsp.status == 'received' then
-    lines = H.process_lsp_response(H.info.lsp.result, function(response)
-      if not response.documentation then return {} end
-      local res = vim.lsp.util.convert_input_to_markdown_lines(response.documentation)
-      return H.normalize_lines(res)
-    end)
+  -- Get info lines to show
+  local lines = H.info_window_lines(H.info.id)
+  if lines == nil or H.is_whitespace(lines) then return end
 
-    H.info.lsp.status = 'done'
-  else
-    lines = H.info_window_lines(H.info.id)
-  end
-
-  -- Don't show anything if there is nothing to show
-  if not lines or H.is_whitespace(lines) then return end
-
-  -- If not already, create a permanent buffer where info will be
-  -- displayed. For some reason, it is important to have it created not in
-  -- `setup()` because in that case there is a small flash (which is really a
-  -- brief open of window at screen top, focus on it, and its close) on the
-  -- first show of info window.
+  -- Ensure permanent buffer with "markdown" highlighting to display info
   H.ensure_buffer(H.info, 'MiniCompletion:completion-item-info')
-
-  -- Add `lines` to info buffer. Use `wrap_at` to have proper width of
-  -- 'non-UTF8' section separators.
-  H.stylize_markdown(H.info.bufnr, lines, { wrap_at = H.get_config().window.info.width })
+  H.ensure_highlight(H.info, 'markdown')
+  vim.api.nvim_buf_set_lines(H.info.bufnr, 0, -1, false, lines)
 
   -- Compute floating window options
   local opts = H.info_window_options()
+  -- Adjust to hide top/bottom code block delimiters (as they are concealed)
+  local top_is_codeblock_start = lines[1]:find('^```%S*$')
+  if top_is_codeblock_start then opts.height = opts.height - 1 end
+  if lines[#lines]:find('^```$') then opts.height = opts.height - 1 end
+
+  -- Adjust section separator with better visual alternative
+  lines = vim.tbl_map(function(l) return l:gsub('^%-%-%-%-*$', string.rep('─', opts.width)) end, lines)
+  vim.api.nvim_buf_set_lines(H.info.bufnr, 0, -1, false, lines)
 
   -- Defer execution because of textlock during `CompleteChanged` event
   vim.schedule(function()
     -- Ensure that window doesn't open when it shouldn't be
     if not (H.pumvisible() and vim.fn.mode() == 'i') then return end
     H.open_action_window(H.info, opts)
+    local win_id = H.info.win_id
+    if not H.is_valid_win(win_id) then return end
+
+    -- Hide helper syntax elements (like ``` code blocks, etc.)
+    vim.wo[H.info.win_id].conceallevel = 3
+
+    -- Scroll past first line if it is a start of a code block
+    if top_is_codeblock_start then vim.api.nvim_win_call(win_id, function() vim.fn.winrestview({ topline = 2 }) end) end
   end)
 end
 
 H.info_window_lines = function(info_id)
-  -- Try to use 'info' field of Neovim's completion item
   local completed_item = H.table_get(H.info, { 'event', 'completed_item' }) or {}
-  local text = completed_item.info or ''
 
-  if not H.is_whitespace(text) then
-    -- Use `<text></text>` to be properly processed by `stylize_markdown()`
-    local lines = { '<text>' }
-    vim.list_extend(lines, vim.split(text, '\n'))
-    table.insert(lines, '</text>')
+  -- If popup is not from LSP, try using 'info' field of completion item
+  if H.completion.source ~= 'lsp' then
+    local text = completed_item.info or ''
+    return (not H.is_whitespace(text)) and vim.split(text, '\n') or nil
+  end
+
+  -- Try to get documentation from LSP's latest completion result
+  if H.info.lsp.status == 'received' then
+    local lines = H.process_lsp_response(H.info.lsp.result, H.normalize_item_doc)
+    H.info.lsp.status = 'done'
     return lines
   end
 
-  -- If popup is not from LSP then there is nothing more to do
-  if H.completion.source ~= 'lsp' then return nil end
+  -- If server doesn't support resolving completion item, reuse first response
+  local lsp_data = H.table_get(completed_item, { 'user_data', 'nvim', 'lsp' })
+  -- NOTE: If there is no LSP's completion item, then there is no point to
+  -- proceed as it should serve as parameters to LSP request
+  if lsp_data.completion_item == nil then return end
 
-  -- Try to get documentation from LSP's initial completion result
-  local lsp_completion_item = H.table_get(completed_item, { 'user_data', 'nvim', 'lsp', 'completion_item' })
-  -- If there is no LSP's completion item, then there is no point to proceed as
-  -- it should serve as parameters to LSP request
-  if not lsp_completion_item then return end
-  local doc = lsp_completion_item.documentation
-  if doc then
-    local lines = vim.lsp.util.convert_input_to_markdown_lines(doc)
-    return H.normalize_lines(lines)
-  end
+  local client = vim.lsp.get_client_by_id(lsp_data.client_id) or {}
+  local can_resolve = H.table_get(client.server_capabilities, { 'completionProvider', 'resolveProvider' })
+  if not can_resolve then return H.normalize_item_doc(lsp_data.completion_item) end
 
-  -- Finally, try request to resolve current completion to add documentation
+  -- Finally, request to resolve current completion to add more documentation
   local bufnr = vim.api.nvim_get_current_buf()
-  local params = lsp_completion_item
-
   local current_id = H.info.lsp.id + 1
   H.info.lsp.id = current_id
   H.info.lsp.status = 'sent'
 
-  local cancel_fun = vim.lsp.buf_request_all(bufnr, 'completionItem/resolve', params, function(result)
+  local cancel_fun = vim.lsp.buf_request_all(bufnr, 'completionItem/resolve', lsp_data.completion_item, function(result)
     -- Don't do anything if there is other LSP request in action
     if not H.is_lsp_current(H.info, current_id) then return end
 
@@ -1038,8 +1043,6 @@ H.info_window_lines = function(info_id)
   end)
 
   H.info.lsp.cancel_fun = cancel_fun
-
-  return nil
 end
 
 H.info_window_options = function()
@@ -1121,19 +1124,13 @@ H.show_signature_window = function()
     return
   end
 
-  -- Make markdown code block
-  table.insert(lines, 1, '```' .. vim.bo.filetype)
-  table.insert(lines, '```')
-
-  -- If not already, create a permanent buffer for signature
+  -- Ensure permanent buffer with current highlighting to display signature
   H.ensure_buffer(H.signature, 'MiniCompletion:signature-help')
-
-  -- Add `lines` to signature buffer. Use `wrap_at` to have proper width of
-  -- 'non-UTF8' section separators.
-  local buf_id = H.signature.bufnr
-  H.stylize_markdown(buf_id, lines, { wrap_at = H.get_config().window.signature.width })
+  H.ensure_highlight(H.signature, vim.bo.filetype)
+  vim.api.nvim_buf_set_lines(H.signature.bufnr, 0, -1, false, lines)
 
   -- Add highlighting of active parameter
+  local buf_id = H.signature.bufnr
   for i, hl_range in ipairs(hl_ranges) do
     if not vim.tbl_isempty(hl_range) and hl_range.first and hl_range.last then
       local first, last = hl_range.first, hl_range.last
@@ -1270,12 +1267,26 @@ end
 
 -- Helpers for floating windows -----------------------------------------------
 H.ensure_buffer = function(cache, name)
-  if type(cache.bufnr) == 'number' and vim.api.nvim_buf_is_valid(cache.bufnr) then return end
+  if H.is_valid_buf(cache.bufnr) then return end
 
-  cache.bufnr = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_name(cache.bufnr, name)
-  -- Make this buffer a scratch (can close without saving)
-  vim.fn.setbufvar(cache.bufnr, '&buftype', 'nofile')
+  local buf_id = vim.api.nvim_create_buf(false, true)
+  cache.bufnr = buf_id
+  vim.api.nvim_buf_set_name(buf_id, name)
+  vim.bo[buf_id].buftype = 'nofile'
+end
+
+H.ensure_highlight = function(cache, filetype)
+  if cache.hl_filetype == filetype then return end
+  cache.hl_filetype = filetype
+  local buf_id = cache.bufnr
+
+  local has_lang, lang = pcall(vim.treesitter.language.get_lang, filetype)
+  lang = has_lang and lang or filetype
+  -- TODO: Remove `opts.error` after compatibility with Neovim=0.11 is dropped
+  local has_parser, parser = pcall(vim.treesitter.get_parser, buf_id, lang, { error = false })
+  has_parser = has_parser and parser ~= nil
+  if has_parser then has_parser = pcall(vim.treesitter.start, buf_id, lang) end
+  if not has_parser then vim.bo[buf_id].syntax = filetype end
 end
 
 -- Returns tuple of height and width
@@ -1283,8 +1294,8 @@ H.floating_dimensions = function(lines, max_height, max_width)
   max_height, max_width = math.max(max_height, 1), math.max(max_width, 1)
 
   -- Simulate how lines will look in window with `wrap` and `linebreak`.
-  -- This is not 100% accurate (mostly when multibyte characters are present
-  -- manifesting into empty space at bottom), but does the job
+  -- This is not 100% accurate (mostly because of concealed characters and
+  -- multibyte manifest into empty space at bottom), but does the job
   local lines_wrap = {}
   for _, l in pairs(lines) do
     vim.list_extend(lines_wrap, H.wrap_line(l, max_width))
@@ -1321,13 +1332,11 @@ end
 H.close_action_window = function(cache, keep_timer)
   if not keep_timer then cache.timer:stop() end
 
-  if type(cache.win_id) == 'number' and vim.api.nvim_win_is_valid(cache.win_id) then
-    vim.api.nvim_win_close(cache.win_id, true)
-  end
+  if H.is_valid_win(cache.win_id) then vim.api.nvim_win_close(cache.win_id, true) end
   cache.win_id = nil
 
   -- For some reason 'buftype' might be reset. Ensure that buffer is scratch.
-  if cache.bufnr then vim.fn.setbufvar(cache.bufnr, '&buftype', 'nofile') end
+  if H.is_valid_buf(cache.bufnr) then vim.bo[cache.bufnr].buftype = 'nofile' end
 end
 
 -- Utilities ------------------------------------------------------------------
@@ -1337,6 +1346,10 @@ H.check_type = function(name, val, ref, allow_nil)
   if type(val) == ref or (ref == 'callable' and vim.is_callable(val)) or (allow_nil and val == nil) then return end
   H.error(string.format('`%s` should be %s, not %s', name, ref, type(val)))
 end
+
+H.is_valid_buf = function(buf_id) return type(buf_id) == 'number' and vim.api.nvim_buf_is_valid(buf_id) end
+
+H.is_valid_win = function(win_id) return type(win_id) == 'number' and vim.api.nvim_win_is_valid(win_id) end
 
 H.is_char_keyword = function(char)
   -- Using Vim's `match()` and `keyword` enables respecting Cyrillic letters
@@ -1437,14 +1450,29 @@ H.map = function(mode, lhs, rhs, opts)
   vim.keymap.set(mode, lhs, rhs, opts)
 end
 
-H.normalize_lines = function(lines)
-  -- Enaure no newline characters and no leading/trailing empty lines
-  lines = table.concat(lines, '\n'):gsub('^\n+', ''):gsub('\n+$', '')
-  return vim.split(lines, '\n')
-end
+H.normalize_item_doc = function(completion_item)
+  local detail, doc = completion_item.detail, completion_item.documentation
+  if detail == nil and doc == nil then return {} end
 
-H.stylize_markdown = function(buf_id, lines, opts)
-  return vim.lsp.util.stylize_markdown(buf_id, H.normalize_lines(lines), opts)
+  -- Extract string content. Treat markdown and plain kinds the same.
+  -- Show both `detail` and `documentation` if the first provides new info.
+  detail, doc = detail or '', (type(doc) == 'table' and doc.value or doc) or ''
+  detail = (H.is_whitespace(detail) or doc:find(detail, 1, true) ~= nil) and ''
+    -- Wrap details in language's code block to (usually) improve highlighting
+    -- This approach seems to work in 'hrsh7th/nvim-cmp'
+    or string.format('```%s\n%s\n```\n', vim.bo.filetype:match('^[^%.]*'), vim.trim(detail))
+  local text = detail .. doc
+
+  -- Ensure consistent line separators
+  text = text:gsub('\r\n?', '\n')
+  -- Remove trailing whitespace (converts blank lines to empty)
+  text = text:gsub('[ \t]+\n', '\n'):gsub('[ \t]+$', '\n')
+  -- Collapse multiple empty lines, remove top and bottom padding
+  text = text:gsub('\n\n+', '\n\n'):gsub('^\n+', ''):gsub('\n+$', '')
+  -- Remove padding around code blocks as they are concealed and appear empty
+  text = text:gsub('\n*(\n```%S+\n)', '%1'):gsub('(\n```\n?)\n*', '%1')
+
+  return text == '' and {} or vim.split(text, '\n')
 end
 
 -- TODO: Remove after compatibility with Neovim=0.9 is dropped
