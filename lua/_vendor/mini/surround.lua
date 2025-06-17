@@ -159,35 +159,37 @@
 --- `!( *a (bb) )!` into `! aa (bb) !`. Typing `sr!)` changes same initial line
 --- into `(( aa (bb) ))`.
 --- >
----  |Key|     Name      |  Example line |    Delete   |     Replace     |
----  |---|---------------|---------------|-------------|-----------------|
----  | ( |  Balanced ()  | !( *a (bb) )! |  !aa (bb)!  | ( ( aa (bb) ) ) |
----  | [ |  Balanced []  | ![ *a [bb] ]! |  !aa [bb]!  | [ [ aa [bb] ] ] |
----  | { |  Balanced {}  | !{ *a {bb} }! |  !aa {bb}!  | { { aa {bb} } } |
----  | < |  Balanced <>  | !< *a <bb> >! |  !aa <bb>!  | < < aa <bb> > > |
----  |---|---------------|---------------|-------------|-----------------|
----  | ) |  Balanced ()  | !( *a (bb) )! | ! aa (bb) ! | (( aa (bb) ))   |
----  | ] |  Balanced []  | ![ *a [bb] ]! | ! aa [bb] ! | [[ aa [bb] ]]   |
----  | } |  Balanced {}  | !{ *a {bb} }! | ! aa {bb} ! | {{ aa {bb} }}   |
----  | > |  Balanced <>  | !< *a <bb> >! | ! aa <bb> ! | << aa <bb> >>   |
----  | b |  Alias for    | !( *a {bb} )! | ! aa {bb} ! | (( aa {bb} ))   |
----  |   |  ), ], or }   |               |             |                 |
----  |---|---------------|---------------|-------------|-----------------|
----  | q |  Alias for    | !'aa'*a'aa'!  | !'aaaaaa'!  | "'aa'aa'aa'"    |
----  |   |  ", ', or `   |               |             |                 |
----  |---|---------------|---------------|-------------|-----------------|
----  | ? |  User prompt  | !e * o!       | ! a !       | ee a oo         |
----  |   |(typed e and o)|               |             |                 |
----  |---|---------------|---------------|-------------|-----------------|
----  | t |      Tag      | !<x>*</x>!    | !a!         | <y><x>a</x></y> |
----  |   |               |               |             | (typed y)       |
----  |---|---------------|---------------|-------------|-----------------|
----  | f | Function call | !f(*a, bb)!   | !aa, bb!    | g(f(*a, bb))    |
----  |   |               |               |             | (typed g)       |
----  |---|---------------|---------------|-------------|-----------------|
----  |   |    Default    | !_a*a_!       | !aaa!       | __aaa__         |
----  |   |   (typed _)   |               |             |                 |
----  |---|---------------|---------------|-------------|-----------------|
+---  ┌───┬───────────────┬───────────────┬─────────────┬─────────────────┐
+---  │Key│     Name      │  Example line │    Delete   │     Replace     │
+---  ├───┴───────────────┴───────────────┴─────────────┴─────────────────┤
+---  ├┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┤
+---  │ ( │  Balanced ()  │ !( *a (bb) )! │  !aa (bb)!  │ ( ( aa (bb) ) ) │
+---  │ [ │  Balanced []  │ ![ *a [bb] ]! │  !aa [bb]!  │ [ [ aa [bb] ] ] │
+---  │ { │  Balanced {}  │ !{ *a {bb} }! │  !aa {bb}!  │ { { aa {bb} } } │
+---  │ < │  Balanced <>  │ !< *a <bb> >! │  !aa <bb>!  │ < < aa <bb> > > │
+---  ├┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┤
+---  │ ) │  Balanced ()  │ !( *a (bb) )! │ ! aa (bb) ! │ (( aa (bb) ))   │
+---  │ ] │  Balanced []  │ ![ *a [bb] ]! │ ! aa [bb] ! │ [[ aa [bb] ]]   │
+---  │ } │  Balanced {}  │ !{ *a {bb} }! │ ! aa {bb} ! │ {{ aa {bb} }}   │
+---  │ > │  Balanced <>  │ !< *a <bb> >! │ ! aa <bb> ! │ << aa <bb> >>   │
+---  │ b │  Alias for    │ !( *a {bb} )! │ ! aa {bb} ! │ (( aa {bb} ))   │
+---  │   │  ), ], or }   │               │             │                 │
+---  ├┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┤
+---  │ q │  Alias for    │ !'aa'*a'aa'!  │ !'aaaaaa'!  │ "'aa'aa'aa'"    │
+---  │   │  ", ', or `   │               │             │                 │
+---  ├┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┤
+---  │ ? │  User prompt  │ !e * o!       │ ! a !       │ ee a oo         │
+---  │   │(typed e and o)│               │             │                 │
+---  ├┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┤
+---  │ t │      Tag      │ !<x>*</x>!    │ !a!         │ <y><x>a</x></y> │
+---  │   │               │               │             │ (typed y)       │
+---  ├┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┤
+---  │ f │ Function call │ !f(*a, bb)!   │ !aa, bb!    │ g(f(*a, bb))    │
+---  │   │               │               │             │ (typed g)       │
+---  ├┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┤
+---  │   │    Default    │ !_a*a_!       │ !aaa!       │ __aaa__         │
+---  │   │   (typed _)   │               │             │                 │
+---  └┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┘
 --- <
 --- Notes:
 --- - All examples assume default `config.search_method`.
@@ -1000,10 +1002,11 @@ MiniSurround.gen_spec = { input = {}, output = {} }
 ---   })
 --- <
 --- Notes:
---- - By default query is done using 'nvim-treesitter' plugin if it is present
----   (falls back to builtin methods otherwise). This allows for a more
----   advanced features (like multiple buffer languages, custom directives, etc.).
----   See `opts.use_nvim_treesitter` for how to disable this.
+--- - Be sure that query files don't contain unknown |treesitter-directives|
+---   (like `#make-range!`, for example). Otherwise surrounding with such captures
+---   might not be found as |vim.treesitter| won't treat them as captures. Verify
+---   with `:=vim.treesitter.query.get('lang', 'textobjects')` and see if the
+---   target capture is recognized as one.
 --- - It uses buffer's |filetype| to determine query language.
 --- - On large files it is slower than pattern-based textobjects. Still very
 ---   fast though (one search should be magnitude of milliseconds or tens of
@@ -1016,21 +1019,24 @@ MiniSurround.gen_spec = { input = {}, output = {} }
 ---   should be a string capture starting with `'@'`.
 ---@param opts table|nil Options. Possible values:
 ---   - <use_nvim_treesitter> - whether to try to use 'nvim-treesitter' plugin
----     (if present) to do the query. It implements more advanced behavior at
----     cost of increased execution time. Provides more coherent experience if
----     'nvim-treesitter-textobjects' queries are used. Default: `true`.
+---     (if present) to do the query. It used to implement more advanced behavior
+---     and more coherent experience if 'nvim-treesitter-textobjects' queries are
+---     used. However, as |lua-treesitter-core| methods are more capable now,
+---     the option will soon be removed. Only present for backward compatibility.
+---     Default: `false`.
 ---
 ---@return function Function which returns array of current buffer region pairs
 ---   representing differences between outer and inner captures.
 ---
 ---@seealso |MiniSurround-surround-specification| for how this type of
 ---   surrounding specification is processed.
---- |get_query()| for how query is fetched in case of no 'nvim-treesitter'.
+--- |vim.treesitter.get_query()| for how query is fetched.
 --- |Query:iter_captures()| for how all query captures are iterated in case of
 ---   no 'nvim-treesitter'.
 --- |MiniAi.gen_spec.treesitter()| for similar 'mini.ai' generator.
 MiniSurround.gen_spec.input.treesitter = function(captures, opts)
-  opts = vim.tbl_deep_extend('force', { use_nvim_treesitter = true }, opts or {})
+  -- TODO: Remove after releasing 'mini.nvim' 0.17.0
+  opts = vim.tbl_deep_extend('force', { use_nvim_treesitter = false }, opts or {})
   captures = H.prepare_captures(captures)
 
   return function()
@@ -1499,6 +1505,13 @@ H.get_matched_range_pairs_plugin = function(captures)
   local ts_queries = require('nvim-treesitter.query')
   local outer_matches = ts_queries.get_capture_matches_recursively(0, captures.outer, 'textobjects')
 
+  -- Make sure that found matches contain `node` field that is actually a node,
+  -- otherwise later `get_capture_matches` will error as it requires an actual
+  -- `TSNode` object. This is needed as capture might be defined with custom
+  -- directive (like `#make-range!`) which 'nvim-treesitter' handles manually
+  -- by returning "extended range" and not `TSNode`.
+  outer_matches = vim.tbl_filter(function(x) return x.node.tree ~= nil end, outer_matches)
+
   -- Pick inner range as the biggest range for node matching inner query. This
   -- is needed because query output is not quaranteed to come in order, so just
   -- picking first one is not enough.
@@ -1509,19 +1522,23 @@ H.get_matched_range_pairs_plugin = function(captures)
 end
 
 H.get_matched_range_pairs_builtin = function(captures)
-  -- Fetch treesitter data for buffer
-  local lang = vim.bo.filetype
+  -- Get buffer's parser (LanguageTree)
   -- TODO: Remove `opts.error` after compatibility with Neovim=0.11 is dropped
-  local has_parser, parser = pcall(vim.treesitter.get_parser, 0, lang, { error = false })
-  if not has_parser or parser == nil then H.error_treesitter('parser', lang) end
+  local has_parser, parser = pcall(vim.treesitter.get_parser, 0, nil, { error = false })
+  if not has_parser or parser == nil then H.error_treesitter('parser') end
 
-  local get_query = vim.fn.has('nvim-0.9') == 1 and vim.treesitter.query.get or vim.treesitter.get_query
-  local query = get_query(lang, 'textobjects')
-  if query == nil then H.error_treesitter('query', lang) end
+  -- Get parser (LanguageTree) at cursor (important for injected languages)
+  local pos = vim.api.nvim_win_get_cursor(0)
+  local lang_tree = parser:language_for_range({ pos[1] - 1, pos[2], pos[1] - 1, pos[2] })
+  local lang = lang_tree:lang()
+
+  -- Get query file depending on the local language
+  local query = vim.treesitter.query.get(lang, 'textobjects')
+  if query == nil then H.error_treesitter('query') end
 
   -- Compute matches for outer capture
   local outer_matches = {}
-  for _, tree in ipairs(parser:trees()) do
+  for _, tree in ipairs(lang_tree:trees()) do
     vim.list_extend(outer_matches, H.get_builtin_matches(captures.outer:sub(2), tree:root(), query))
   end
 
@@ -1559,9 +1576,11 @@ end
 
 H.get_match_range = function(node, metadata) return (metadata or {}).range and metadata.range or { node:range() } end
 
-H.error_treesitter = function(failed_get, lang)
-  local bufnr = vim.api.nvim_get_current_buf()
-  local msg = string.format([[Can not get %s for buffer %d and language '%s'.]], failed_get, bufnr, lang)
+H.error_treesitter = function(failed_get)
+  local buf_id, ft = vim.api.nvim_get_current_buf(), vim.bo.filetype
+  local has_lang, lang = pcall(vim.treesitter.language.get_lang, ft)
+  lang = has_lang and lang or ft
+  local msg = string.format('Can not get %s for buffer %d and language "%s".', failed_get, buf_id, lang)
   H.error(msg)
 end
 
@@ -2007,7 +2026,7 @@ H.region_highlight = function(buf_id, region)
   -- Indexing is zero-based. Rows - end-inclusive, columns - end-exclusive.
   local from_line, from_col, to_line, to_col =
     region.from.line - 1, region.from.col - 1, region.to.line - 1, region.to.col
-  vim.highlight.range(buf_id, ns_id, 'MiniSurround', { from_line, from_col }, { to_line, to_col })
+  H.highlight_range(buf_id, ns_id, 'MiniSurround', { from_line, from_col }, { to_line, to_col })
 end
 
 H.region_unhighlight = function(buf_id, region)
@@ -2253,7 +2272,9 @@ H.cartesian_product = function(arr)
 end
 
 H.wrap_callable_table = function(x)
-  if vim.is_callable(x) and type(x) == 'table' then return function(...) return x(...) end end
+  if vim.is_callable(x) and type(x) == 'table' then
+    return function(...) return x(...) end
+  end
   return x
 end
 
@@ -2261,5 +2282,9 @@ end
 H.islist = vim.fn.has('nvim-0.10') == 1 and vim.islist or vim.tbl_islist
 H.tbl_flatten = vim.fn.has('nvim-0.10') == 1 and function(x) return vim.iter(x):flatten(math.huge):totable() end
   or vim.tbl_flatten
+
+-- TODO: Remove after compatibility with Neovim=0.10 is dropped
+H.highlight_range = function(...) vim.hl.range(...) end
+if vim.fn.has('nvim-0.11') == 0 then H.highlight_range = function(...) vim.highlight.range(...) end end
 
 return MiniSurround

@@ -131,7 +131,7 @@ end
 ---     - |signcolumn|
 ---     - |shortmess|
 ---     - |splitbelow|
----     - |splitkeep| (on Neovim>=0.9)
+---     - |splitkeep|
 ---     - |splitright|
 ---     - |termguicolors| (on Neovim<0.10; later versions have it smartly enabled)
 ---     - |wrap|
@@ -219,6 +219,9 @@ end
 --- - See |[count]| for its meaning.
 --- - On Neovim>=0.10 mappings for `#` and `*` are not created as their
 ---   enhanced variants are made built-in. See |v_star-default| and |v_#-default|.
+--- - On Neovim>=0.11 there are |[<Space>| / |]<Space>| for adding empty lines.
+---   The `gO` and `go` mappings are still created as they are more aligned with
+---   similarly purposed |O| and |o| keys (although sometimes conflict with |gO|).
 ---
 --- ## mappings.option_toggle_prefix ~
 ---
@@ -273,7 +276,7 @@ end
 ---     - `<C-up>`    - increase window height.
 ---     - `<C-right>` - increase window width.
 ---
---- ## mappings.move_with_alt
+--- ## mappings.move_with_alt ~
 ---
 --- The `config.mappings.move_with_alt` creates mappings for a more consistent
 --- cursor move in Insert, Command, and Terminal modes. For example, it proves
@@ -305,8 +308,8 @@ end
 --- The `config.autocommands.basic` creates some common autocommands:
 ---
 --- - Starts insert mode when opening terminal (see |startinsert| and |TermOpen|).
---- - Highlights yanked text for a brief period of time (see
----   |vim.highlight.on_yank()| and |TextYankPost|).
+--- - Highlights yanked text for a brief period of time (see |vim.hl.on_yank()|;
+---   on Neovim<0.11 - |vim.highlight.on_yank|) and |TextYankPost|).
 ---
 --- ## autocommands.relnum_in_visual_mode ~
 ---
@@ -319,7 +322,7 @@ MiniBasics.config = {
     -- Basic options ('number', 'ignorecase', and many more)
     basic = true,
 
-    -- Extra UI features ('winblend', 'cmdheight=0', ...)
+    -- Extra UI features ('winblend', 'listchars', 'pumheight', ...)
     extra_ui = false,
 
     -- Presets for window borders ('single', 'double', ...)
@@ -374,7 +377,6 @@ MiniBasics.toggle_diagnostic = function()
   f(buf_id)
 
   local new_buf_state = not is_enabled
-  H.buffer_diagnostic_state[buf_id] = new_buf_state
 
   return new_buf_state and '  diagnostic' or 'nodiagnostic'
 end
@@ -382,9 +384,6 @@ end
 -- Helper data ================================================================
 -- Module default config
 H.default_config = vim.deepcopy(MiniBasics.config)
-
--- Diagnostic state per buffer
-H.buffer_diagnostic_state = {}
 
 -- Helper functionality =======================================================
 -- Settings -------------------------------------------------------------------
@@ -472,12 +471,8 @@ H.apply_options = function(config)
     o.formatoptions = 'qjl1'             -- Don't autoformat comments
 
     -- Neovim version dependent
-    if vim.fn.has('nvim-0.9') == 1 then
-      opt.shortmess:append('WcC') -- Reduce command line messages
-      o.splitkeep = 'screen'      -- Reduce scroll during window split
-    else
-      opt.shortmess:append('Wc')  -- Reduce command line messages
-    end
+    opt.shortmess:append('WcC') -- Reduce command line messages
+    o.splitkeep = 'screen'      -- Reduce scroll during window split
 
     if vim.fn.has('nvim-0.10') == 0 then
       o.termguicolors = true -- Enable gui colors
@@ -509,7 +504,7 @@ end
 
 H.vim_o = setmetatable({}, {
   __newindex = function(_, name, value)
-    local was_set = vim.api.nvim_get_option_info(name).was_set
+    local was_set = vim.api.nvim_get_option_info2(name, { scope = 'global' }).was_set
     if was_set then return end
 
     vim.o[name] = value
@@ -518,7 +513,7 @@ H.vim_o = setmetatable({}, {
 
 H.vim_opt = setmetatable({}, {
   __index = function(_, name)
-    local was_set = vim.api.nvim_get_option_info(name).was_set
+    local was_set = vim.api.nvim_get_option_info2(name, { scope = 'global' }).was_set
     if was_set then return { append = function() end, remove = function() end } end
 
     return vim.opt[name]
@@ -587,7 +582,7 @@ H.apply_mappings = function(config)
     map('x', 'g/', '<esc>/\\%V', { silent = false, desc = 'Search inside visual selection' })
 
     -- Search visually selected text (slightly better than builtins in
-    -- Neovim>=0.8 but slightly worse than builtins in Neovim>=0.10)
+    -- Neovim<0.10 but slightly worse than builtins in Neovim>=0.10)
     -- TODO: Remove this after compatibility with Neovim=0.9 is dropped
     if vim.fn.has('nvim-0.10') == 0 then
       map('x', '*', [[y/\V<C-R>=escape(@", '/\')<CR><CR>]], { desc = 'Search forward' })
@@ -710,7 +705,9 @@ H.apply_autocommands = function(config)
   end
 
   if config.autocommands.basic then
-    au('TextYankPost', '*', function() vim.highlight.on_yank() end, 'Highlight yanked text')
+    local f = function() vim.hl.on_yank() end
+    if vim.fn.has('nvim-0.11') == 0 then f = function() vim.highlight.on_yank() end end
+    au('TextYankPost', '*', f, 'Highlight yanked text')
 
     local start_terminal_insert = vim.schedule_wrap(function(data)
       -- Try to start terminal mode only if target terminal is current
@@ -755,14 +752,8 @@ end
 
 if vim.fn.has('nvim-0.10') == 1 then
   H.diagnostic_is_enabled = function(buf_id) return vim.diagnostic.is_enabled({ bufnr = buf_id }) end
-elseif vim.fn.has('nvim-0.9') == 1 then
-  H.diagnostic_is_enabled = function(buf_id) return not vim.diagnostic.is_disabled(buf_id) end
 else
-  H.diagnostic_is_enabled = function(buf_id)
-    local res = H.buffer_diagnostic_state[buf_id]
-    if res == nil then res = true end
-    return res
-  end
+  H.diagnostic_is_enabled = function(buf_id) return not vim.diagnostic.is_disabled(buf_id) end
 end
 
 return MiniBasics

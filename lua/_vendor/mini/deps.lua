@@ -275,7 +275,7 @@
 --- - <hooks> `(table|nil)` - table with callable hooks to call on certain events.
 ---   Possible hook names:
 ---     - <pre_install>   - before creating plugin directory.
----     - <post_install>  - after  creating plugin directory.
+---     - <post_install>  - after  creating plugin directory (before |:packadd|).
 ---     - <pre_checkout>  - before making change in existing plugin.
 ---     - <post_checkout> - after  making change in existing plugin.
 ---   Each hook is executed with the following table as an argument:
@@ -780,9 +780,6 @@ H.cache = {
   git_version = nil,
 }
 
--- Buffer name counts
-H.buf_name_counts = {}
-
 -- Helper functionality =======================================================
 -- Settings -------------------------------------------------------------------
 H.setup_config = function(config)
@@ -1254,7 +1251,7 @@ H.clean_confirm = function(paths)
     if #paths_to_delete == 0 then return H.notify('Nothing to delete') end
     H.clean_delete(paths_to_delete)
   end
-  H.show_confirm_buf(lines, { name = 'mini-deps://confirm-clean', exec_on_write = finish_clean })
+  H.show_confirm_buf(lines, { name = 'confirm-clean', exec_on_write = finish_clean })
 
   -- Define basic highlighting
   vim.cmd('syntax region MiniDepsHint start="^\\%1l" end="\\%' .. n_header .. 'l$"')
@@ -1377,7 +1374,7 @@ H.update_feedback_confirm = function(lines)
     MiniDeps.update(names, { force = true, offline = true })
   end
 
-  H.show_confirm_buf(report, { name = 'mini-deps://confirm-update', exec_on_write = finish_update, setup_folds = true })
+  H.show_confirm_buf(report, { name = 'confirm-update', exec_on_write = finish_update, setup_folds = true })
 
   -- Define basic highlighting
   vim.cmd('syntax region MiniDepsHint start="^\\%1l" end="\\%' .. n_header .. 'l$"')
@@ -1414,7 +1411,7 @@ end
 H.show_confirm_buf = function(lines, opts)
   -- Show buffer
   local buf_id = vim.api.nvim_create_buf(true, true)
-  H.buf_set_name(buf_id, opts.name)
+  H.set_buf_name(buf_id, opts.name)
   vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, lines)
   vim.cmd('tab sbuffer ' .. buf_id)
   local tab_num, win_id = vim.api.nvim_tabpage_get_number(0), vim.api.nvim_get_current_win()
@@ -1590,6 +1587,8 @@ H.check_type = function(name, val, ref, allow_nil)
   H.error(string.format('`%s` should be %s, not %s', name, ref, type(val)))
 end
 
+H.set_buf_name = function(buf_id, name) vim.api.nvim_buf_set_name(buf_id, 'minideps://' .. buf_id .. '/' .. name) end
+
 H.notify = vim.schedule_wrap(function(msg, level)
   level = level or 'INFO'
   if H.get_config().silent and level ~= 'ERROR' and level ~= 'WARN' then return end
@@ -1600,10 +1599,14 @@ end)
 
 H.edit = function(path, win_id)
   if type(path) ~= 'string' then return end
+  local b = vim.api.nvim_win_get_buf(win_id or 0)
+  local try_mimic_buf_reuse = (vim.fn.bufname(b) == '' and vim.bo[b].buftype ~= 'quickfix' and not vim.bo[b].modified)
+    and (#vim.fn.win_findbuf(b) == 1 and vim.deep_equal(vim.fn.getbufline(b, 1, '$'), { '' }))
   local buf_id = vim.fn.bufadd(vim.fn.fnamemodify(path, ':.'))
   -- Showing in window also loads. Use `pcall` to not error with swap messages.
   pcall(vim.api.nvim_win_set_buf, win_id or 0, buf_id)
   vim.bo[buf_id].buflisted = true
+  if try_mimic_buf_reuse then pcall(vim.api.nvim_buf_delete, b, { unload = false }) end
   return buf_id
 end
 
@@ -1620,13 +1623,6 @@ end
 
 H.source = function(path)
   pcall(function() vim.cmd('source ' .. vim.fn.fnameescape(path)) end)
-end
-
-H.buf_set_name = function(buf_id, name)
-  local n = (H.buf_name_counts[name] or 0) + 1
-  H.buf_name_counts[name] = n
-  local suffix = n == 1 and '' or ('_' .. n)
-  vim.api.nvim_buf_set_name(buf_id, name .. suffix)
 end
 
 -- TODO: Remove after compatibility with Neovim=0.9 is dropped
