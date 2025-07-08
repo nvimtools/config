@@ -19,7 +19,7 @@ git module basics:
 
 git module completion:
   url: https://github.com/echasnovski/mini.completion
-  rev: 89e051092ad9d273550d7352169c8b0524f12441
+  rev: 381b1aa7178708591453569393a184135b9e9f3e
 
 git module ai:
   url: https://github.com/echasnovski/mini.ai
