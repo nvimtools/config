@@ -207,6 +207,19 @@
 --- rules for disabling module's functionality is left to user. See
 --- |mini.nvim-disabling-recipes| for common recipes.
 
+--- Events ~
+---
+--- To allow user customization, certain |User| autocommand events are
+--- triggered under common circumstances:
+---
+--- - Info and signature help window:
+---     - `MiniCompletionWindowOpen` - after opening new window.
+---     - `MiniCompletionWindowUpdate` - after updating existing window.
+---
+---     Each event's |event-data| table contains `kind` (one of "info" or "signature")
+---     and `win_id` (affected window identifier) fields.
+---@tag MiniCompletion-events
+
 -- Overall implementation design:
 -- - Completion:
 --     - On `InsertCharPre` event try to start auto completion. If needed,
@@ -398,7 +411,7 @@ end
 ---   'signature' string. Default: array containing all of them.
 MiniCompletion.stop = function(actions)
   actions = actions or { 'completion', 'info', 'signature' }
-  for _, n in pairs(actions) do
+  for _, n in ipairs(actions) do
     H.stop_actions[n]()
   end
 end
@@ -434,8 +447,11 @@ MiniCompletion.completefunc_lsp = function(findstart, base)
     return findstart == 1 and -3 or {}
   else
     if findstart == 1 then
-      H.completion.start_pos = H.get_completion_start(H.completion.lsp.result)
-      return H.completion.start_pos[2]
+      local from, to = H.get_completion_range(H.completion.lsp.result)
+      -- Cache initial completion state to revert to it when inserting snippet
+      -- NOTE: Track only length of base for performance, since this is enough
+      H.completion.init_base = { lnum = from[1], col = from[2], length = math.max(to[2] - from[2], 0) }
+      return from[2]
     end
 
     local is_incomplete = false
@@ -686,7 +702,7 @@ H.completion = {
   text_changed_id = 0,
   timer = vim.loop.new_timer(),
   lsp = { id = 0, status = nil, is_incomplete = false, result = nil, resolved = {}, cancel_fun = nil, context = nil },
-  start_pos = {},
+  init_base = { lnum = nil, col = nil, length = nil },
 }
 
 -- Cache for completion item info
@@ -892,9 +908,9 @@ H.auto_info = function()
   H.info.id = H.info.id + 1
 
   -- Stop showing window if no candidate is selected
-  local completed_item = H.info.event.completed_item
+  local completed_item = H.info.event.completed_item or {}
   if completed_item.word == nil then
-    return vim.schedule(function() H.close_action_window(H.info, true) end)
+    return vim.schedule(function() H.close_action_window(H.info) end)
   end
 
   -- Show info content without delay for visited and resolved LSP item.
@@ -908,7 +924,8 @@ H.auto_info = function()
   if H.is_valid_win(win_id) and delay > 0 then
     vim.wo[win_id].winhighlight = vim.wo[win_id].winhighlight .. ',FloatBorder:MiniCompletionInfoBorderOutdated'
   end
-  H.info.timer:start(delay, 0, vim.schedule_wrap(H.show_info_window))
+  local cur_info_id = H.info.id
+  H.info.timer:start(delay, 0, function() H.show_info_window(cur_info_id) end)
 end
 
 H.auto_signature = function()
@@ -1086,7 +1103,7 @@ H.is_lsp_trigger = function(char, type)
   local triggers
   local providers = { completion = 'completionProvider', signature = 'signatureHelpProvider' }
 
-  for _, client in pairs(H.get_buf_lsp_clients()) do
+  for _, client in ipairs(H.get_buf_lsp_clients()) do
     triggers = H.table_get(client, { 'server_capabilities', providers[type], 'triggerCharacters' })
     if vim.tbl_contains(triggers or {}, char) then return true end
   end
@@ -1095,7 +1112,7 @@ end
 
 H.cancel_lsp = function(caches)
   caches = caches or { H.completion, H.info, H.signature }
-  for _, c in pairs(caches) do
+  for _, c in ipairs(caches) do
     if vim.tbl_contains({ 'sent', 'received' }, c.lsp.status) then
       if c.lsp.cancel_fun then c.lsp.cancel_fun() end
       c.lsp.status = 'canceled'
@@ -1212,7 +1229,7 @@ H.lsp_completion_response_items_to_complete_items = function(items)
   local res, item_kinds = {}, vim.lsp.protocol.CompletionItemKind
   local snippet_kind = vim.lsp.protocol.CompletionItemKind.Snippet
   local snippet_inserttextformat = vim.lsp.protocol.InsertTextFormat.Snippet
-  for i, item in pairs(items) do
+  for i, item in ipairs(items) do
     local word = H.get_completion_word(item)
 
     local is_snippet_kind = item.kind == snippet_kind
@@ -1311,52 +1328,77 @@ H.make_lsp_extra_actions = function(lsp_data)
       pcall(vim.api.nvim_win_set_cursor, 0, cur)
     end
 
-    -- Try to apply additional text edits
-    H.apply_additional_text_edits(item)
+    -- Try to only apply additional text edits for non-snippet items
+    if snippet == nil then return H.apply_text_edits(item.client_id, item.additionalTextEdits) end
 
-    -- Expand snippet: remove inserted word and instead insert snippet
-    if snippet == nil then return end
-    local from, to = H.completion.start_pos, vim.api.nvim_win_get_cursor(0)
+    -- Revert to initial completion state to respect text edit coordinates
+    local init_base = H.completion.init_base
+    local from, to = { init_base.lnum, init_base.col }, vim.api.nvim_win_get_cursor(0)
+    -- NOTE: actual base string should not be relevant here, only byte count
+    local prefix = string.rep('x', init_base.length)
+    pcall(vim.api.nvim_buf_set_text, 0, from[1] - 1, from[2], to[1] - 1, to[2], { prefix })
+    to = { from[1], from[2] + init_base.length }
+
+    local edit_range = H.get_lsp_edit_range({ result = { item } })
+    if edit_range ~= nil then
+      from = { edit_range.start.line + 1, edit_range.start.character }
+      to = { edit_range['end'].line + 1, edit_range['end'].character }
+    end
+
+    -- Try to apply additional text edits *after* restoring state because their
+    -- data is computed by the server at that state. Keep track of the range
+    -- that needs clearing as it might change during edits.
+    from, to = H.apply_tracked_text_edits(item.client_id, item.additionalTextEdits, from, to)
+
+    -- Expand snippet: remove base and insert at cursor
     pcall(vim.api.nvim_buf_set_text, 0, from[1] - 1, from[2], to[1] - 1, to[2], { '' })
     local insert = H.get_config().lsp_completion.snippet_insert or MiniCompletion.default_snippet_insert
     insert(snippet)
   end)
 end
 
-H.apply_additional_text_edits = function(item)
-  -- Code originally inspired by https://github.com/neovim/neovim/issues/12310
-  if item.additionalTextEdits == nil then return end
+H.apply_text_edits = function(client_id, text_edits)
+  if text_edits == nil then return end
+  local offset_encoding = client_id == nil and 'utf-16' or vim.lsp.get_client_by_id(client_id).offset_encoding
+  vim.lsp.util.apply_text_edits(text_edits, vim.api.nvim_get_current_buf(), offset_encoding)
+end
 
-  -- Prepare extmarks to track relevant positions after text edits
-  local start_pos = H.completion.start_pos
-  local start_extmark_id = vim.api.nvim_buf_set_extmark(0, H.ns_id, start_pos[1] - 1, start_pos[2], {})
+H.apply_tracked_text_edits = function(client_id, text_edits, from, to)
+  if text_edits == nil then return from, to end
 
+  -- Prepare extmarks to track relevant positions
   local cur_pos = vim.api.nvim_win_get_cursor(0)
-  -- - Keep track of start-cursor range as not "expanding"
-  local cursor_extmark_opts = { right_gravity = false }
-  local cursor_extmark_id = vim.api.nvim_buf_set_extmark(0, H.ns_id, cur_pos[1] - 1, cur_pos[2], cursor_extmark_opts)
+  local cursor_extmark_id = vim.api.nvim_buf_set_extmark(0, H.ns_id, cur_pos[1] - 1, cur_pos[2], {})
+
+  local from_extmark_id = vim.api.nvim_buf_set_extmark(0, H.ns_id, from[1] - 1, from[2], {})
+  local to_extmark_id = vim.api.nvim_buf_set_extmark(0, H.ns_id, to[1] - 1, to[2], {})
 
   -- Do text edits
-  local offset_encoding = item.client_id == nil and 'utf-16' or vim.lsp.get_client_by_id(item.client_id).offset_encoding
-  vim.lsp.util.apply_text_edits(item.additionalTextEdits, vim.api.nvim_get_current_buf(), offset_encoding)
+  H.apply_text_edits(client_id, text_edits)
 
-  -- Restore relevant positions
-  local start_data = vim.api.nvim_buf_get_extmark_by_id(0, H.ns_id, start_extmark_id, {})
-  H.completion.start_pos = { start_data[1] + 1, start_data[2] }
-  pcall(vim.api.nvim_buf_del_extmark, 0, H.ns_id, start_extmark_id)
-
+  -- Restore cursor position
   local cursor_data = vim.api.nvim_buf_get_extmark_by_id(0, H.ns_id, cursor_extmark_id, {})
+  vim.api.nvim_buf_del_extmark(0, H.ns_id, cursor_extmark_id)
   pcall(vim.api.nvim_win_set_cursor, 0, { cursor_data[1] + 1, cursor_data[2] })
-  pcall(vim.api.nvim_buf_del_extmark, 0, H.ns_id, cursor_extmark_id)
+
+  -- Update in place tracked range
+  local from_data = vim.api.nvim_buf_get_extmark_by_id(0, H.ns_id, from_extmark_id, {})
+  vim.api.nvim_buf_del_extmark(0, H.ns_id, from_extmark_id)
+  local to_data = vim.api.nvim_buf_get_extmark_by_id(0, H.ns_id, to_extmark_id, {})
+  vim.api.nvim_buf_del_extmark(0, H.ns_id, to_extmark_id)
+  return { from_data[1] + 1, from_data[2] }, { to_data[1] + 1, to_data[2] }
 end
 
 -- Completion item info -------------------------------------------------------
-H.show_info_window = function()
-  local event = H.info.event
-  if not event then return end
+H.show_info_window = vim.schedule_wrap(function(info_id)
+  -- Do nothing if completion item was changed. For example, after autoinvoked
+  -- in timer with zero delay but after it there is another `CompleteChanged`
+  -- that closes popup. This only stops the timer *but* not actually cancelling
+  -- this function.
+  if H.info.id ~= info_id then return end
 
   -- Get info lines to show. Wait for resolve if returned `false`.
-  local lines = H.info_window_lines(H.info.id)
+  local lines = H.info_window_lines(info_id)
   if lines == false then return end
   if lines == nil or H.is_whitespace(lines) then lines = { '-No-info-' } end
 
@@ -1377,7 +1419,7 @@ H.show_info_window = function()
   vim.schedule(function()
     -- Ensure that window doesn't open when it shouldn't be
     if not (H.pumvisible() and vim.fn.mode() == 'i') then return end
-    H.ensure_action_window(H.info, opts)
+    H.ensure_action_window('info', opts)
     local win_id = H.info.win_id
     if not H.is_valid_win(win_id) then return end
 
@@ -1389,7 +1431,7 @@ H.show_info_window = function()
       vim.api.nvim_win_call(win_id, function() vim.fn.winrestview({ topline = 2 }) end)
     end
   end)
-end
+end)
 
 H.info_window_lines = function(info_id)
   local completed_item = H.info.event.completed_item
@@ -1430,7 +1472,7 @@ H.info_window_lines = function(info_id)
 
     H.info.lsp.status = 'received'
 
-    -- Don't do anything if completion item was changed
+    -- Do nothing if completion item was changed
     if H.info.id ~= info_id then return end
 
     -- Still use original item if there was error during resolve
@@ -1441,7 +1483,7 @@ H.info_window_lines = function(info_id)
     --   Do this outside of `H.info.event.completed_item` because it will not
     --   have persistent effect as it will come fresh from Vimscript `v:event`.
     resolved_cache[item_id] = result
-    H.show_info_window()
+    H.show_info_window(info_id)
   end, bufnr)
 
   H.info.lsp.cancel_fun = cancel_fun
@@ -1525,10 +1567,7 @@ H.show_signature_window = function()
   H.signature.lsp.status = 'done'
 
   -- Close window and exit if there is nothing to show
-  if not lines or H.is_whitespace(lines) then
-    H.close_action_window(H.signature)
-    return
-  end
+  if not lines or H.is_whitespace(lines) then return H.close_action_window(H.signature) end
 
   -- Ensure permanent buffer with current highlighting to display signature
   H.ensure_buffer(H.signature, 'signature-help')
@@ -1559,7 +1598,7 @@ H.show_signature_window = function()
   local opts = H.signature_window_opts()
 
   -- Ensure that window doesn't open when it shouldn't
-  if vim.fn.mode() == 'i' then H.ensure_action_window(H.signature, opts) end
+  if vim.fn.mode() == 'i' then H.ensure_action_window('signature', opts) end
 end
 
 H.signature_window_lines = function()
@@ -1568,7 +1607,7 @@ H.signature_window_lines = function()
   -- client. Each highlight range is a table which indicates (if not empty)
   -- what parameter to highlight for every LSP client's signature string.
   local lines, hl_ranges = {}, {}
-  for _, t in pairs(signature_data) do
+  for _, t in ipairs(signature_data) do
     -- `t` is allowed to be an empty table (in which case nothing is added) or
     -- a table with two entries. This ensures that `hl_range`'s integer index
     -- points to an actual line in future buffer.
@@ -1701,7 +1740,7 @@ H.floating_dimensions = function(lines, max_height, max_width)
   -- This is not 100% accurate (mostly because of concealed characters and
   -- multibyte manifest into empty space at bottom), but does the job
   local lines_wrap = {}
-  for _, l in pairs(lines) do
+  for _, l in ipairs(lines) do
     vim.list_extend(lines_wrap, H.wrap_line(l, max_width))
   end
   -- Height is a number of wrapped lines truncated to maximum height
@@ -1723,14 +1762,10 @@ H.floating_dimensions = function(lines, max_height, max_width)
   return math.max(height, 1), math.max(width, 1)
 end
 
-H.ensure_action_window = function(cache, opts)
+H.ensure_action_window = function(window_kind, opts)
+  local cache = H[window_kind]
   local is_shown = H.is_valid_win(cache.win_id)
-  if is_shown then
-    -- Preserve non-essential config values
-    local win_config = vim.api.nvim_win_get_config(cache.win_id)
-    opts.title = win_config.title
-    vim.api.nvim_win_set_config(cache.win_id, opts)
-  end
+  if is_shown then vim.api.nvim_win_set_config(cache.win_id, opts) end
   if not is_shown then cache.win_id = vim.api.nvim_open_win(cache.bufnr, false, opts) end
 
   local win_id = cache.win_id
@@ -1740,10 +1775,14 @@ H.ensure_action_window = function(cache, opts)
   vim.wo[win_id].linebreak = true
   vim.wo[win_id].winhighlight = vim.wo[win_id].winhighlight:gsub(',FloatBorder:MiniCompletionInfoBorderOutdated', '')
   vim.wo[win_id].wrap = true
+
+  local event = 'MiniCompletionWindow' .. (is_shown and 'Update' or 'Open')
+  local data = { kind = window_kind, win_id = win_id }
+  vim.api.nvim_exec_autocmds('User', { pattern = event, data = data })
 end
 
-H.close_action_window = function(cache, keep_timer)
-  if not keep_timer then cache.timer:stop() end
+H.close_action_window = function(cache)
+  cache.timer:stop()
 
   if H.is_valid_win(cache.win_id) then vim.api.nvim_win_close(cache.win_id, true) end
   cache.win_id = nil
@@ -1776,17 +1815,18 @@ end
 -- immediately).
 H.pumvisible = function() return vim.fn.pumvisible() > 0 end
 
-H.get_completion_start = function(lsp_result)
+H.get_completion_range = function(lsp_result)
+  local pos = vim.api.nvim_win_get_cursor(0)
+
   -- Prefer completion start from LSP response(s)
   for _, response_data in pairs(lsp_result or {}) do
     local range = H.get_lsp_edit_range(response_data)
-    if range ~= nil then return { range.start.line + 1, range.start.character } end
+    if range ~= nil then return { range.start.line + 1, range.start.character }, pos end
   end
 
   -- Fall back to start position of latest keyword
-  local pos = vim.api.nvim_win_get_cursor(0)
   local line = vim.api.nvim_get_current_line()
-  return { pos[1], vim.fn.match(line:sub(1, pos[2]), '\\k*$') }
+  return { pos[1], vim.fn.match(line:sub(1, pos[2]), '\\k*$') }, pos
 end
 
 H.get_lsp_edit_range = function(response_data)
@@ -1800,7 +1840,7 @@ H.get_lsp_edit_range = function(response_data)
 
   -- Try using all items to find the first one with edit range
   local items = response_data.result.items or response_data.result
-  for _, item in pairs(items) do
+  for _, item in ipairs(items) do
     -- Account for `textEdit` can be either `TextEdit` or `InsertReplaceEdit`
     if type(item.textEdit) == 'table' then return item.textEdit.range or item.textEdit.insert end
   end
@@ -1809,7 +1849,7 @@ end
 H.is_whitespace = function(s)
   if type(s) == 'string' then return s:find('^%s*$') end
   if type(s) == 'table' then
-    for _, val in pairs(s) do
+    for _, val in ipairs(s) do
       if not H.is_whitespace(val) then return false end
     end
     return true
@@ -1882,7 +1922,7 @@ H.normalize_item_doc = function(lsp_item, fallback_info)
 
   -- Extract string content. Treat markdown and plain kinds the same.
   -- Show both `detail` and `documentation` if the first provides new info.
-  detail, doc = detail or '', (type(doc) == 'table' and doc.value or doc) or ''
+  detail, doc = detail or '', type(doc) == 'table' and (doc.value or '') or (doc or '')
   -- Wrap details in language's code block to (usually) improve highlighting
   -- This approach seems to work in 'hrsh7th/nvim-cmp'
   detail = (H.is_whitespace(detail) or doc:find(detail, 1, true) ~= nil) and '' or (H.wrap_in_codeblock(detail) .. '\n')
