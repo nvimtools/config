@@ -16,7 +16,6 @@
 ---     - Replace surrounding with `sr`.
 ---     - Find surrounding with `sf` or `sF` (move cursor right or left).
 ---     - Highlight surrounding with `sh`.
----     - Change number of neighbor lines with `sn` (see |MiniSurround-algorithm|).
 ---
 --- - Surrounding is identified by a single character as both "input" (in
 ---   `delete` and `replace` start, `find`, and `highlight`) and "output" (in
@@ -514,7 +513,6 @@ end
 ---       find_left = '',
 ---       highlight = '',
 ---       replace = 'cs',
----       update_n_lines = '',
 ---
 ---       -- Add this only if you don't want to use extended mappings
 ---       suffix_last = '',
@@ -687,7 +685,6 @@ MiniSurround.config = {
     find_left = 'sF', -- Find surrounding (to the left)
     highlight = 'sh', -- Highlight surrounding
     replace = 'sr', -- Replace surrounding
-    update_n_lines = 'sn', -- Update `n_lines`
 
     suffix_last = 'l', -- Suffix to search with "prev" method
     suffix_next = 'n', -- Suffix to search with "next" method
@@ -894,16 +891,15 @@ MiniSurround.highlight = function()
   end, config.highlight_duration)
 end
 
---- Update `MiniSurround.config.n_lines`
+--- Update `MiniSurround.config.n_lines` from user input
 ---
---- Convenient wrapper for updating `MiniSurround.config.n_lines` in case the
---- default one is not appropriate.
+--- Mapping example: >lua
+---
+---   vim.keymap.set('n', 'sn', '<Cmd>lua MiniSurround.update_n_lines()<CR>')
+--- <
 MiniSurround.update_n_lines = function()
-  if H.is_disabled() then return '<Esc>' end
-
   local n_lines = MiniSurround.user_input('New number of neighbor lines', MiniSurround.config.n_lines)
-  n_lines = math.floor(tonumber(n_lines) or MiniSurround.config.n_lines)
-  MiniSurround.config.n_lines = n_lines
+  MiniSurround.config.n_lines = math.floor(tonumber(n_lines) or MiniSurround.config.n_lines)
 end
 
 --- Ask user for input
@@ -1043,11 +1039,20 @@ MiniSurround.gen_spec.input.treesitter = function(captures, opts)
   -- `row1-col1-byte1-row2-col2-byte2` (i.e. "range six") format.
   local ts_range_to_region = function(r)
     -- The `master` branch of 'nvim-treesitter' can return "range four" format
-    -- if it uses custom directives, like `#make-range!`. Due ot the fact that
+    -- if it uses custom directives, like `#make-range!`. Due to the fact that
     -- it doesn't fully mock the `TSNode:range()` method to return "range six".
     -- TODO: Remove after 'nvim-treesitter' `master` branch support is dropped.
     local offset = #r == 4 and -1 or 0
-    return { from = { line = r[1] + 1, col = r[2] + 1 }, to = { line = r[4 + offset] + 1, col = r[5 + offset] } }
+    local res = { from = { line = r[1] + 1, col = r[2] + 1 }, to = { line = r[4 + offset] + 1, col = r[5 + offset] } }
+
+    -- NOTE: Adjust "row-exclusive, col-0" range that means "all previous row
+    -- including the newline character"
+    if res.to.col == 0 then
+      res.to.line = res.to.line - 1
+      res.to.col = vim.fn.col({ res.to.line, '$' })
+    end
+
+    return res
   end
 
   return function()
@@ -1173,7 +1178,6 @@ H.setup_config = function(config)
   H.check_type('mappings.find_left', config.mappings.find_left, 'string')
   H.check_type('mappings.highlight', config.mappings.highlight, 'string')
   H.check_type('mappings.replace', config.mappings.replace, 'string')
-  H.check_type('mappings.update_n_lines', config.mappings.update_n_lines, 'string')
 
   H.check_type('mappings.suffix_last', config.mappings.suffix_last, 'string')
   H.check_type('mappings.suffix_next', config.mappings.suffix_next, 'string')
@@ -1199,7 +1203,6 @@ H.apply_config = function(config)
   map(m.find_left, H.make_action('find', 'left'),  'Find left surrounding')
   map(m.highlight, H.make_action('highlight'),     'Highlight surrounding')
 
-  H.map('n', m.update_n_lines, MiniSurround.update_n_lines, { desc = 'Update `MiniSurround.config.n_lines`' })
   H.map('x', m.add, [[:<C-u>lua MiniSurround.add('visual')<CR>]], { desc = 'Add surrounding to selection' })
 
   -- Make extended mappings
@@ -1542,18 +1545,28 @@ H.get_matched_range_pairs_builtin = function(captures)
   -- Get parser (LanguageTree) at cursor (important for injected languages)
   local pos = vim.api.nvim_win_get_cursor(0)
   local lang_tree = parser:language_for_range({ pos[1] - 1, pos[2], pos[1] - 1, pos[2] })
-  local lang = lang_tree:lang()
 
-  -- Get query file depending on the local language
-  local query = vim.treesitter.query.get(lang, 'textobjects')
-  if query == nil then H.error_treesitter('query') end
-
+  local missing_query_langs = {}
   -- Compute matched ranges for both outer and inner captures
+  -- Maybe go up parent trees to work with injected languages
   local outer_ranges, inner_ranges = {}, {}
-  for _, tree in ipairs(lang_tree:trees()) do
-    local root = tree:root()
-    vim.list_extend(outer_ranges, H.get_match_ranges_builtin(root, buf_id, query, captures.outer:sub(2)))
-    vim.list_extend(inner_ranges, H.get_match_ranges_builtin(root, buf_id, query, captures.inner:sub(2)))
+  while (vim.tbl_isempty(inner_ranges) or vim.tbl_isempty(outer_ranges)) and lang_tree ~= nil do
+    local lang = lang_tree:lang()
+    -- Get query file depending on the local language
+    local query = vim.treesitter.query.get(lang, 'textobjects')
+
+    if query ~= nil then
+      for _, tree in ipairs(lang_tree:trees()) do
+        local root = tree:root()
+        vim.list_extend(outer_ranges, H.get_match_ranges_builtin(root, buf_id, query, captures.outer:sub(2)))
+        vim.list_extend(inner_ranges, H.get_match_ranges_builtin(root, buf_id, query, captures.inner:sub(2)))
+      end
+    end
+    if query == nil then missing_query_langs[lang] = true end
+
+    -- `LanguageTree:parent()` was added in Neovim<0.10
+    -- TODO: Drop extra check after compatibility with Neovim=0.9 is dropped
+    lang_tree = lang_tree.parent and lang_tree:parent() or nil
   end
 
   -- Match outer and inner ranges: for each outer range pick the biggest inner
@@ -1562,6 +1575,11 @@ H.get_matched_range_pairs_builtin = function(captures)
   for i, outer in ipairs(outer_ranges) do
     res[i] = { outer = outer, inner = H.get_biggest_nested_range(inner_ranges, outer) }
   end
+
+  if vim.tbl_isempty(res) and not vim.tbl_isempty(missing_query_langs) then
+    H.error_treesitter('query', vim.tbl_keys(missing_query_langs))
+  end
+
   return res
 end
 
@@ -1607,11 +1625,18 @@ H.get_biggest_nested_range = function(ranges, parent)
   return best_range
 end
 
-H.error_treesitter = function(failed_get)
+H.error_treesitter = function(failed_get, langs)
   local buf_id, ft = vim.api.nvim_get_current_buf(), vim.bo.filetype
-  local has_lang, lang = pcall(vim.treesitter.language.get_lang, ft)
-  lang = has_lang and lang or ft
-  local msg = string.format('Can not get %s for buffer %d and language "%s".', failed_get, buf_id, lang)
+  if langs == nil then
+    local has_lang, ft_lang = pcall(vim.treesitter.language.get_lang, ft)
+    -- `vim.treesitter.language.get_lang()` defaults to `ft` on Neovim>0.11
+    -- TODO: Drop check after compatibility with Neovim=0.10 is dropped
+    langs = (has_lang and ft_lang ~= nil) and { ft_lang } or { ft }
+  end
+  table.sort(langs)
+  local langs_str = table.concat(vim.tbl_map(vim.inspect, langs), ', ')
+  local langs_noun = #langs == 1 and 'language' or 'languages'
+  local msg = string.format('Can not get %s for buffer %d and %s %s.', failed_get, buf_id, langs_noun, langs_str)
   H.error(msg)
 end
 

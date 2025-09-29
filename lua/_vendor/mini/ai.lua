@@ -990,11 +990,20 @@ MiniAi.gen_spec.treesitter = function(ai_captures, opts)
   -- `row1-col1-byte1-row2-col2-byte2` (i.e. "range six") format.
   local ts_range_to_region = function(r)
     -- The `master` branch of 'nvim-treesitter' can return "range four" format
-    -- if it uses custom directives, like `#make-range!`. Due ot the fact that
+    -- if it uses custom directives, like `#make-range!`. Due to the fact that
     -- it doesn't fully mock the `TSNode:range()` method to return "range six".
     -- TODO: Remove after 'nvim-treesitter' `master` branch support is dropped.
     local offset = #r == 4 and -1 or 0
-    return { from = { line = r[1] + 1, col = r[2] + 1 }, to = { line = r[4 + offset] + 1, col = r[5 + offset] } }
+    local res = { from = { line = r[1] + 1, col = r[2] + 1 }, to = { line = r[4 + offset] + 1, col = r[5 + offset] } }
+
+    -- NOTE: Adjust "row-exclusive, col-0" range that means "all previous row
+    -- including the newline character"
+    if res.to.col == 0 then
+      res.to.line = res.to.line - 1
+      res.to.col = vim.fn.col({ res.to.line, '$' })
+    end
+
+    return res
   end
 
   return function(ai_type, _, _)
@@ -1562,16 +1571,34 @@ H.get_matched_ranges_builtin = function(captures)
   -- Get parser (LanguageTree) at cursor (important for injected languages)
   local pos = vim.api.nvim_win_get_cursor(0)
   local lang_tree = parser:language_for_range({ pos[1] - 1, pos[2], pos[1] - 1, pos[2] })
-  local lang = lang_tree:lang()
 
-  -- Get query file depending on the local language
-  local query = vim.treesitter.query.get(lang, 'textobjects')
-  if query == nil then H.error_treesitter('query') end
+  local missing_query_langs = {}
+  local res = {}
+  -- Maybe go up parent trees to work with injected languages
+  while vim.tbl_isempty(res) and lang_tree ~= nil do
+    local lang = lang_tree:lang()
+    -- Get query file depending on the local language
+    local query = vim.treesitter.query.get(lang, 'textobjects')
 
+    if query ~= nil then H.append_ranges(res, buf_id, query, captures, lang_tree) end
+    if query == nil then missing_query_langs[lang] = true end
+
+    -- `LanguageTree:parent()` was added in Neovim<0.10
+    -- TODO: Drop extra check after compatibility with Neovim=0.9 is dropped
+    lang_tree = lang_tree.parent and lang_tree:parent() or nil
+  end
+
+  if vim.tbl_isempty(res) and not vim.tbl_isempty(missing_query_langs) then
+    H.error_treesitter('query', vim.tbl_keys(missing_query_langs))
+  end
+
+  return res
+end
+
+H.append_ranges = function(res, buf_id, query, captures, lang_tree)
   -- Compute ranges of matched captures
   local capture_is_requested = vim.tbl_map(function(c) return vim.tbl_contains(captures, '@' .. c) end, query.captures)
 
-  local res = {}
   for _, tree in ipairs(lang_tree:trees()) do
     -- TODO: Remove `opts.all`after compatibility with Neovim=0.10 is dropped
     for _, match, metadata in query:iter_matches(tree:root(), buf_id, nil, nil, { all = true }) do
@@ -1581,8 +1608,6 @@ H.get_matched_ranges_builtin = function(captures)
       end
     end
   end
-
-  return res
 end
 
 H.get_nodes_range_builtin = function(nodes, buf_id, metadata)
@@ -1602,11 +1627,18 @@ H.get_nodes_range_builtin = function(nodes, buf_id, metadata)
   return { left[1], left[2], left[3], right[4], right[5], right[6] }
 end
 
-H.error_treesitter = function(failed_get)
+H.error_treesitter = function(failed_get, langs)
   local buf_id, ft = vim.api.nvim_get_current_buf(), vim.bo.filetype
-  local has_lang, lang = pcall(vim.treesitter.language.get_lang, ft)
-  lang = has_lang and lang or ft
-  local msg = string.format('Can not get %s for buffer %d and language "%s".', failed_get, buf_id, lang)
+  if langs == nil then
+    local has_lang, ft_lang = pcall(vim.treesitter.language.get_lang, ft)
+    -- `vim.treesitter.language.get_lang()` defaults to `ft` on Neovim>0.11
+    -- TODO: Drop check after compatibility with Neovim=0.10 is dropped
+    langs = (has_lang and ft_lang ~= nil) and { ft_lang } or { ft }
+  end
+  table.sort(langs)
+  local langs_str = table.concat(vim.tbl_map(vim.inspect, langs), ', ')
+  local langs_noun = #langs == 1 and 'language' or 'languages'
+  local msg = string.format('Can not get %s for buffer %d and %s %s.', failed_get, buf_id, langs_noun, langs_str)
   H.error(msg)
 end
 
