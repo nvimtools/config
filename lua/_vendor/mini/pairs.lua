@@ -1,16 +1,13 @@
 --- *mini.pairs* Autopairs
---- *MiniPairs*
 ---
 --- MIT License Copyright (c) 2021 Evgeni Chasnovski
----
---- ==============================================================================
----
+
 --- Features:
 --- - Functionality to work with two "paired" characters conditional on cursor's
 ---   neighborhood (character to its left and character to its right).
 ---
---- - Usage should be through making appropriate mappings using |MiniPairs.map|
----   or in |MiniPairs.setup| (for global mapping), |MiniPairs.map_buf| (for
+--- - Usage should be through making appropriate mappings using |MiniPairs.map()|
+---   or in |MiniPairs.setup()| (for global mapping), |MiniPairs.map_buf()| (for
 ---   buffer mapping).
 ---
 --- - Pairs get automatically registered for special <BS> (all configured modes)
@@ -19,6 +16,10 @@
 ---   Note: these mappings are autocreated if they do not override existing ones.
 ---
 --- What it doesn't do:
+--- - Provide smart behavior, like based on bracket balance. The default behavior
+---   is to almost always perform an action (insert pair, jump over). Manually
+---   press |i_CTRL-V| before a character to explicitly insert it (and only it).
+---
 --- - It doesn't support multiple characters as "open" and "close" symbols. Use
 ---   snippets for that.
 ---
@@ -28,8 +29,8 @@
 ---       for '<*>' in current buffer.
 ---     - `:lua MiniPairs.unmap_buf(0, 'i', <*>, <pair>)` - unmap key `<*>` while
 ---       unregistering `<pair>` pair in current buffer. Note: this reverts
----       mapping done by |MiniPairs.map_buf|. If mapping was done with
----       |MiniPairs.map|, unmap for buffer in usual Neovim manner:
+---       mapping done by |MiniPairs.map_buf()|. If mapping was done with
+---       |MiniPairs.map()|, unmap for buffer in usual Neovim manner:
 ---       `inoremap <buffer> <*> <*>` (this maps `<*>` key to do the same it
 ---       does by default).
 ---     - Disable module for buffer (see 'Disabling' section).
@@ -79,7 +80,7 @@
 ---
 --- - Make sure to make proper mapping of <CR> in order to support completion
 ---   plugin of your choice:
----     - For |MiniCompletion| see 'Helpful key mappings' section.
+---     - For |mini.completion| see 'Helpful key mappings' section.
 ---     - For current implementation of "hrsh7th/nvim-cmp" there is no need to
 ---       make custom mapping. You can use default setup, which will confirm
 ---       completion selection if popup is visible and expand pair otherwise.
@@ -94,6 +95,7 @@
 --- and customization intentions, writing exact rules for disabling module's
 --- functionality is left to user. See |mini.nvim-disabling-recipes| for common
 --- recipes.
+---@tag MiniPairs
 
 ---@alias __pairs_neigh_pattern string|nil Pattern for two neighborhood characters.
 ---   Character "\r" indicates line start, "\n" - line end.
@@ -130,16 +132,14 @@ MiniPairs.setup = function(config)
 end
 
 --stylua: ignore
---- Module config
----
---- Default values:
+--- Defaults ~
 ---@eval return MiniDoc.afterlines_to_code(MiniDoc.current.eval_section)
 MiniPairs.config = {
   -- In which modes mappings from this `config` should be created
   modes = { insert = true, command = false, terminal = false },
 
   -- Global mappings. Each right hand side should be a pair information, a
-  -- table with at least these fields (see more in |MiniPairs.map|):
+  -- table with at least these fields (see more in |MiniPairs.map()|):
   -- - <action> - one of "open", "close", "closeopen".
   -- - <pair> - two character string for pair to be used.
   -- By default pair is not inserted after `\`, quotes are not recognized by
@@ -175,8 +175,8 @@ MiniPairs.config = {
 ---@param mode string `mode` for |nvim_set_keymap()|.
 ---@param lhs string `lhs` for |nvim_set_keymap()|.
 ---@param pair_info table Table with pair information. Fields:
----   - <action> - one of "open" (for |MiniPairs.open|),
----     "close" (for |MiniPairs.close|), or "closeopen" (for |MiniPairs.closeopen|).
+---   - <action> - one of "open" for |MiniPairs.open()|,
+---     "close" for |MiniPairs.close()|, or "closeopen" for |MiniPairs.closeopen()|.
 ---   - <pair> - two character string to be used as argument for action function.
 ---     Can contain multibyte characters.
 ---   - <neigh_pattern> - optional 'two character' neighborhood pattern to be
@@ -184,7 +184,7 @@ MiniPairs.config = {
 ---     multiple characters.
 ---     Default: `'..'` (no restriction from neighborhood).
 ---   - <register> - optional table with information about whether this pair will
----     be recognized by <BS> (in |MiniPairs.bs|) and/or <CR> (in |MiniPairs.cr|).
+---     be recognized by <BS> (in |MiniPairs.bs()|) and/or <CR> (in |MiniPairs.cr()|).
 ---     Should have boolean fields <bs> and <cr> (both `true` by default).
 ---@param opts table|nil Optional table `opts` for |nvim_set_keymap()|. Elements
 ---   `expr` and `noremap` won't be recognized (`true` by default).
@@ -204,7 +204,7 @@ end
 ---
 --- This is a wrapper for |nvim_buf_set_keymap()| but instead of string right
 --- hand side of mapping it expects table with pair information similar to one
---- in |MiniPairs.map|.
+--- in |MiniPairs.map()|.
 ---
 --- Using this function instead of |nvim_buf_set_keymap()| allows automatic
 --- registration of pairs which will be recognized by <BS> and <CR>.
@@ -249,8 +249,8 @@ end
 ---
 --- Wrapper for |nvim_buf_del_keymap()| which also unregisters supplied `pair`.
 ---
---- Note: this only reverts mapping done by |MiniPairs.map_buf|. If mapping was
---- done with |MiniPairs.map|, revert to default behavior for buffer: >lua
+--- Note: this only reverts mapping done by |MiniPairs.map_buf()|. If mapping was
+--- done with |MiniPairs.map()|, revert to default behavior for buffer: >lua
 ---
 ---   -- Map `X` key to do the same it does by default
 ---   vim.keymap.set('i', 'X', 'X', { buffer = true })
@@ -271,12 +271,12 @@ end
 
 --- Process "open" symbols
 ---
---- Used as |map-expr| mapping for "open" symbols in asymmetric pair ('(', '[',
+--- Used as |:map-<expr>| mapping for "open" symbols in asymmetric pair ('(', '[',
 --- etc.). If neighborhood doesn't match supplied pattern, function results
 --- into "open" symbol. Otherwise, it pastes whole pair and moves inside pair
 --- with |<Left>|.
 ---
---- Used inside |MiniPairs.map| and |MiniPairs.map_buf| for an actual mapping.
+--- Used inside |MiniPairs.map()| and |MiniPairs.map_buf()| for an actual mapping.
 ---
 ---@param pair __pairs_pair
 ---@param neigh_pattern __pairs_neigh_pattern
@@ -294,13 +294,13 @@ end
 
 --- Process "close" symbols
 ---
---- Used as |map-expr| mapping for "close" symbols in asymmetric pair (')',
+--- Used as |:map-<expr>| mapping for "close" symbols in asymmetric pair (')',
 --- ']', etc.). If neighborhood doesn't match supplied pattern, function
 --- results into "close" symbol. Otherwise it jumps over symbol to the right of
 --- cursor (with |<Right>|) if it is equal to "close" one and inserts it
 --- otherwise.
 ---
---- Used inside |MiniPairs.map| and |MiniPairs.map_buf| for an actual mapping.
+--- Used inside |MiniPairs.map()| and |MiniPairs.map_buf()| for an actual mapping.
 ---
 ---@param pair __pairs_pair
 ---@param neigh_pattern __pairs_neigh_pattern
@@ -314,12 +314,12 @@ end
 
 --- Process "closeopen" symbols
 ---
---- Used as |map-expr| mapping for 'symmetrical' symbols (from pairs '""',
---- '\'\'', '``').  It tries to perform 'closeopen action': move over right
---- character (with |<Right>|) if it is equal to second character from pair or
+--- Used as |:map-<expr>| mapping for 'symmetrical' symbols (like " and ')
+--- It tries to perform 'closeopen action': move over right character
+--- (with |<Right>|) if it is equal to second character from pair or
 --- conditionally paste pair otherwise (with |MiniPairs.open()|).
 ---
---- Used inside |MiniPairs.map| and |MiniPairs.map_buf| for an actual mapping.
+--- Used inside |MiniPairs.map()| and |MiniPairs.map_buf()| for an actual mapping.
 ---
 ---@param pair __pairs_pair
 ---@param neigh_pattern __pairs_neigh_pattern
@@ -332,13 +332,13 @@ end
 
 --- Process |<BS>|
 ---
---- Used as |map-expr| mapping for <BS> in Insert mode. It removes whole pair
+--- Used as |:map-<expr>| mapping for <BS> in Insert mode. It removes whole pair
 --- (via executing <Del> after input key) if neighborhood is equal to a whole
 --- pair recognized for current buffer. Pair is recognized for current buffer
 --- if it is registered for global or current buffer mapping. Pair is
---- registered as a result of calling |MiniPairs.map| or |MiniPairs.map_buf|.
+--- registered as a result of calling |MiniPairs.map()| or |MiniPairs.map_buf()|.
 ---
---- Mapped by default inside |MiniPairs.setup|.
+--- Mapped by default inside |MiniPairs.setup()|.
 ---
 --- This can be used to modify other Insert mode keys to respect neighborhood
 --- pair. Examples: >lua
@@ -362,16 +362,16 @@ end
 
 --- Process |i_<CR>|
 ---
---- Used as |map-expr| mapping for <CR> in insert mode. It puts "close"
+--- Used as |:map-<expr>| mapping for <CR> in insert mode. It puts "close"
 --- symbol on next line (via `<CR><C-o>O`) if neighborhood is equal to a whole
 --- pair recognized for current buffer. Pair is recognized for current buffer
 --- if it is registered for global or current buffer mapping. Pair is
---- registered as a result of calling |MiniPairs.map| or |MiniPairs.map_buf|.
+--- registered as a result of calling |MiniPairs.map()| or |MiniPairs.map_buf()|.
 ---
 --- Note: some relevant mode changing events are temporarily ignored
---- (with |eventignore|) to counter effect of using |i_CTRL-O|.
+--- (with |'eventignore'|) to counter effect of using |i_CTRL-O|.
 ---
---- Mapped by default inside |MiniPairs.setup|.
+--- Mapped by default inside |MiniPairs.setup()|.
 ---
 ---@param key string|nil Key to use. Default: `'<CR>'`.
 ---

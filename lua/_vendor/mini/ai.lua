@@ -1,10 +1,7 @@
 --- *mini.ai* Extend and create a/i textobjects
---- *MiniAi*
 ---
 --- MIT License Copyright (c) 2022 Evgeni Chasnovski
----
---- ==============================================================================
----
+
 --- Enhance some builtin |text-objects| (like |a(|, |a)|, |a'|, and more),
 --- create new ones (like `a*`, `a<Space>`, `af`, `a?`, and more), and allow
 --- user to create their own.
@@ -18,7 +15,7 @@
 ---     - Consecutive application (update selection without leaving Visual mode).
 ---     - Aliases for multiple textobjects.
 ---
---- - Comprehensive builtin textobjects (see more in |MiniAi-textobject-builtin|):
+--- - Comprehensive builtin textobjects (see more in |MiniAi-builtin-textobjects|):
 ---     - Balanced brackets (with and without whitespace) plus alias.
 ---     - Balanced quotes plus alias.
 ---     - Function call.
@@ -77,7 +74,7 @@
 ---
 --- # Comparisons ~
 ---
---- - 'wellle/targets.vim':
+--- - [wellle/targets.vim](https://github.com/wellle/targets.vim):
 ---     - Has limited support for creating own textobjects: it is constrained
 ---       to pre-defined detection rules. 'mini.ai' allows creating own rules
 ---       via Lua patterns and functions (see |MiniAi-textobject-specification|).
@@ -93,11 +90,11 @@
 ---     - Has limited support for "argument" textobject. Although it works in
 ---       most situations, it often misdetects commas as argument separator
 ---       (like if it is inside quotes or `{}`). 'mini.ai' deals with these cases.
---- - 'nvim-treesitter/nvim-treesitter-textobjects':
+--- - [nvim-treesitter/nvim-treesitter-textobjects](https://github.com/nvim-treesitter/nvim-treesitter-textobjects):
 ---     - Along with textobject functionality provides a curated and maintained
 ---       set of popular textobject queries for many languages (which can power
 ---       |MiniAi.gen_spec.treesitter()| functionality).
----     - Both support working with |lua-treesitter-directives| allowing more
+---     - Both support working with |treesitter-directives| allowing more
 ---       fine-tuned textobjects.
 ---     - Implements only textobjects based on treesitter.
 ---     - Doesn't support |v:count|.
@@ -111,9 +108,8 @@
 --- and customization intentions, writing exact rules for disabling module's
 --- functionality is left to user. See |mini.nvim-disabling-recipes| for common
 --- recipes.
+---@tag MiniAi
 
---- Builtin textobjects ~
----
 --- This table describes all builtin textobjects along with what they
 --- represent. Explanation:
 --- - `Key` represents the textobject identifier: single character which should
@@ -178,74 +174,87 @@
 ---     - When cursor is exactly on the identifier character while there are
 ---       two matching candidates on both left and right, the resulting region
 ---       with smaller width is preferred.
----@tag MiniAi-textobject-builtin
+---@tag MiniAi-builtin-textobjects
 
---- - REGION - table representing region in a buffer. Fields:
----     - <from> and <to> for inclusive start and end positions (<to> might be
----       `nil` to describe empty region). Each position is also a table with
----       line <line> and column <col> (both start at 1).
----     - <vis_mode> for which Visual mode will be used to select textobject.
----       See `opts` argument of |MiniAi.select_textobject()|.
----       One of `'v'`, `'V'`, `'\22'` (escaped `'<C-v>'`).
----   Examples: >lua
+--- Note: this is similar to |MiniSurround-glossary|.
 ---
----     { from = { line = 1, col = 1 }, to = { line = 2, col = 1 } }
+--- REGION ~
+--- Table representing region in a buffer. Fields:
+--- - <from> and <to> for inclusive start and end positions (<to> might be
+---   `nil` to describe empty region). Each position is also a table with
+---   line <line> and column <col> (both start at 1).
+--- - <vis_mode> for which Visual mode will be used to select textobject.
+---   See `opts` argument of |MiniAi.select_textobject()|.
+---   One of `'v'`, `'V'`, `'\22'` (escaped `'<C-v>'`).
 ---
----     -- Forced linewise mode
----     {
----       from = { line = 1, col = 1 }, to = { line = 2, col = 1 },
----       vis_mode = 'V',
----     }
+--- Examples: >lua
 ---
----     -- Empty region
----     { from = { line = 10, col = 10 } }
+---   { from = { line = 1, col = 1 }, to = { line = 2, col = 1 } }
+---
+---   -- Forced linewise mode
+---   {
+---     from = { line = 1, col = 1 }, to = { line = 2, col = 1 },
+---     vis_mode = 'V',
+---   }
+---
+---   -- Empty region
+---   { from = { line = 10, col = 10 } }
 --- <
---- - PATTERN - string describing Lua pattern.
---- - SPAN - interval inside a string (end-exclusive). Like [1, 5). Equal
----   `from` and `to` edges describe empty span at that point.
---- - SPAN `A = [a1, a2)` COVERS `B = [b1, b2)` if every element of
----   `B` is within `A` (`a1 <= b < a2`).
----   It also is described as B IS NESTED INSIDE A.
---- - NESTED PATTERN - array of patterns aimed to describe nested spans.
---- - SPAN MATCHES NESTED PATTERN if there is a sequence of consecutively
----   nested spans each matching corresponding pattern within substring of
----   previous span (or input string for first span). Example: >lua
+--- PATTERN ~
+--- String describing Lua pattern.
 ---
----     -- Nested patterns for balanced `()` with inner space
----     { '%b()', '^. .* .$' }
+--- SPAN ~
+--- Interval inside a string (end-exclusive). Like [1, 5). Equal `from` and `to` edges
+--- describe empty span at that point.
 ---
----     -- Example input string (with columns underneath for easier reading):
----        "( ( () ( ) ) )"
----     --  12345678901234
+--- Span `A = [a1, a2)` covers `B = [b1, b2)` if every element of `B` is within
+--- `A` (`a1 <= b < a2`). It also is described as "B is nested inside A".
+---
+--- NESTED PATTERN ~
+--- Array of patterns aimed to describe nested spans.
+---
+--- SPAN MATCHES NESTED PATTERN ~
+--- If there is a sequence of consecutively nested spans each matching
+--- corresponding pattern within substring of previous span (or input string
+--- for first span). Example: >lua
+---
+---   -- Nested patterns for balanced `()` with inner space
+---   { '%b()', '^. .* .$' }
+---
+---   -- Example input string (with columns underneath for easier reading):
+---      "( ( () ( ) ) )"
+---   --  12345678901234
 --- <
----   Here are all matching spans [1, 15) and [3, 13). Both [5, 7) and [8, 10)
----   match first pattern but not second. All other combinations of `(` and `)`
----   don't match first pattern (not balanced).
---- - COMPOSED PATTERN: array with each element describing possible pattern
----   (or array of them) at that place. Composed pattern basically defines all
----   possible combinations of nested pattern (their cartesian product).
----   Examples:
----     1. Either balanced `()` or balanced `[]` but both with inner edge space: >lua
+--- Here are all matching spans [1, 15) and [3, 13). Both [5, 7) and [8, 10)
+--- match first pattern but not second. All other combinations of `(` and `)`
+--- don't match first pattern (not balanced).
 ---
----          -- Composed pattern
----          { { '%b()', '%b[]' }, '^. .* .$' }
+--- COMPOSED PATTERN ~
+--- Array with each element describing possible pattern (or array of them) at
+--- that place. Composed pattern basically defines all possible combinations of
+--- nested pattern (their cartesian product). Examples:
 ---
----          -- Composed pattern expanded into equivalent array of nested patterns
----          { '%b()', '^. .* .$' } -- and
----          { '%b[]', '^. .* .$' }
+--- 1. Either balanced `()` or balanced `[]` but both with inner edge space: >lua
+---
+---     -- Composed pattern
+---     { { '%b()', '%b[]' }, '^. .* .$' }
+---
+---     -- Composed pattern expanded into equivalent array of nested patterns
+---     { '%b()', '^. .* .$' } -- and
+---     { '%b[]', '^. .* .$' }
 --- <
----     2. Either "balanced `()` with inner edge space" or "balanced `[]` with
----        no inner edge space", both with 5 or more characters: >lua
+--- 2. Either "balanced `()` with inner edge space" or "balanced `[]` with no
+---    inner edge space", both with 5 or more characters: >lua
 ---
----          -- Composed pattern
----          { { { '%b()', '^. .* .$' }, { '%b[]', '^.[^ ].*[^ ].$' } }, '.....' }
+---     -- Composed pattern
+---     { { { '%b()', '^. .* .$' }, { '%b[]', '^.[^ ].*[^ ].$' } }, '.....' }
 ---
----          -- Composed pattern expanded into equivalent array of nested patterns
----          { '%b()', '^. .* .$', '.....' } -- and
----          { '%b[]', '^.[^ ].*[^ ].$', '.....' }
+---     -- Composed pattern expanded into equivalent array of nested patterns
+---     { '%b()', '^. .* .$', '.....' } -- and
+---     { '%b[]', '^.[^ ].*[^ ].$', '.....' }
 --- <
---- - SPAN MATCHES COMPOSED PATTERN if it matches at least one nested pattern
----   from expanded composed pattern.
+--- SPAN MATCHES COMPOSED PATTERN ~
+--- If it matches at least one nested pattern from expanded composed pattern.
 ---@tag MiniAi-glossary
 
 --- Textobject specification has a structure of composed pattern (see
@@ -356,8 +365,6 @@
 --- textobject specifications.
 ---@tag MiniAi-textobject-specification
 
---- Algorithm design
----
 --- Search for the textobjects relies on these principles:
 --- - It uses same input data as described in |MiniAi.find_textobject()|,
 ---   i.e. whether it is `a` or `i` textobject, its identifier, reference region, etc.
@@ -422,13 +429,9 @@ MiniAi.setup = function(config)
   H.apply_config(config)
 end
 
---- Module config
----
---- Default values:
+--- Defaults ~
 ---@eval return MiniDoc.afterlines_to_code(MiniDoc.current.eval_section)
----@text # Options ~
----
---- ## Custom textobjects ~
+---@text # Custom textobjects ~
 ---
 --- User can define own textobjects by supplying `config.custom_textobjects`.
 --- It should be a table with keys being single character textobject identifier
@@ -436,7 +439,7 @@ end
 --- (see |MiniAi-textobject-specification|).
 ---
 --- General recommendations:
---- - This can be used to override builtin ones (|MiniAi-textobject-builtin|).
+--- - This can be used to override builtin ones (|MiniAi-builtin-textobjects|).
 ---   Supply non-valid input (not in specification format) to disable module's
 ---   builtin textobject in favor of external or Neovim's builtin mapping.
 --- - Keys should use character representation which can be |getcharstr()| output.
@@ -479,7 +482,7 @@ end
 --- <
 --- There are more example specifications in |MiniAi-textobject-specification|.
 ---
---- ## Search method ~
+--- # Search method ~
 ---
 --- Value of `config.search_method` defines how best match search is done.
 --- Based on its value, one of the following matches will be selected:
@@ -520,12 +523,12 @@ end
 --- - `'prev'`: `(a) bbb (c)` -> `(a)`. Same outcome for `(bbb)`.
 --- - `'nearest'`: depends on cursor position (same as in `'cover_or_nearest'`).
 ---
---- ## Mappings ~
+--- # Mappings ~
 ---
 --- Mappings `around_next` / `inside_next` and `around_last` / `inside_last` are
 --- essentially `around` / `inside` but using search method `'next'` and `'prev'`.
 ---
---- NOTE: with default config, built-in LSP mappings |an| and |in| on Neovim>=0.12
+--- NOTE: with default config, built-in LSP mappings |v_an| and |v_in| on Neovim>=0.12
 --- are overridden. Either use different `around_next` / `inside_next` keys or
 --- map manually using |vim.lsp.buf.selection_range()|. For example: >lua
 ---
@@ -693,6 +696,7 @@ end
 ---       ['|'] = gen_spec.pair('|', '|', { type = 'non-balanced' }),
 ---     }
 ---   })
+--- <
 MiniAi.gen_spec = {}
 
 --- Argument specification
@@ -850,7 +854,7 @@ end
 --- - `function_call({ name_pattern = '[%w_]' })` will recognize function name with
 ---   only alphanumeric or underscore (not dot).
 ---
----@param opts table|nil Optsion. Allowed fields:
+---@param opts table|nil Options. Allowed fields:
 ---   - <name_pattern> - string pattern of character set allowed in function name.
 ---     Default: `'[%w_%.]'` (alphanumeric, underscore, or dot).
 ---     Note: should be enclosed in `[]`.
@@ -916,8 +920,7 @@ end
 ---
 --- In order for this to work, apart from working treesitter parser for desired
 --- language, user should have a reachable language-specific 'textobjects'
---- query (see |vim.treesitter.query.get()| or |get_query()|, depending on your
---- Neovim version).
+--- query (see |vim.treesitter.query.get()|).
 --- The most straightforward way for this is to have 'textobjects.scm' query
 --- file with treesitter captures stored in some recognized path. This is
 --- primarily designed to be compatible with plugin
@@ -952,9 +955,9 @@ end
 --- Notes:
 --- - Be sure that query files don't contain unknown |treesitter-directives|
 ---   (like `#make-range!`, for example). Otherwise textobject for such capture
----   might not be found as |vim.treesitter| won't treat them as captures. Verify
----   with `:=vim.treesitter.query.get('lang', 'textobjects')` and see if the
----   target capture is recognized as one.
+---   might not be found as |lua-treesitter-core| won't treat them as captures.
+---   Verify with `:=vim.treesitter.query.get('lang', 'textobjects')` and see
+---   if the target capture is recognized as one.
 --- - It uses buffer's |filetype| to determine query language.
 --- - On large files it is slower than pattern-based textobjects. Still very
 ---   fast though (one search should be magnitude of milliseconds or tens of
@@ -976,10 +979,10 @@ end
 ---   returns array of current buffer regions representing matches for
 ---   corresponding (`a` or `i`) treesitter capture.
 ---
----@seealso |MiniAi-textobject-specification| for how this type of textobject
+---@seealso - |MiniAi-textobject-specification| for how this type of textobject
 ---   specification is processed.
---- |vim.treesitter.get_query()| for how query is fetched.
---- |Query:iter_captures()| for how all query captures are iterated in case of
+--- - |vim.treesitter.query.get()| for how query is fetched.
+--- - |Query:iter_captures()| for how all query captures are iterated in case of
 ---   no 'nvim-treesitter'.
 MiniAi.gen_spec.treesitter = function(ai_captures, opts)
   -- TODO: Remove after releasing 'mini.nvim' 0.17.0
@@ -1023,7 +1026,7 @@ end
 --- - Construct specification for a textobject that matches from left edge string
 ---   to right edge string: `a` includes both strings, `i` only insides.
 ---
---- Used for |MiniAi-textobject-builtin| with identifier `?`.
+--- Used for |MiniAi-builtin-textobjects| with identifier `?`.
 ---
 ---@return function Textobject specification as function.
 MiniAi.gen_spec.user_prompt = function()
