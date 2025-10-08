@@ -508,11 +508,10 @@ end
 --- By default it uses "prefix style" left hand side starting with "s" (for
 --- "surround"): `sa` - "surround add", `sd` - "surround delete", etc.
 ---
---- Note: if 'timeoutlen' is low enough to cause occasional usage of |s| key
---- (that deletes character under cursor), disable it with the following call: >lua
+--- Note: if any of the mappings start with "s" (as is by default), it is mapped
+--- to |<Nop>| to prevent accidental trigger of built-in |s| (can happen if there
+--- is a long enough delay between pressing "s" and the next key). Use `cl` instead.
 ---
----   vim.keymap.set({ 'n', 'x' }, 's', '<Nop>')
---- <
 --- # Custom surroundings ~
 ---
 --- User can define own surroundings by supplying `config.custom_surroundings`.
@@ -2266,6 +2265,7 @@ H.map = function(mode, lhs, rhs, opts)
   if lhs == '' then return end
   opts = vim.tbl_deep_extend('force', { silent = true }, opts or {})
   vim.keymap.set(mode, lhs, rhs, opts)
+  if lhs:sub(1, 1) == 's' then vim.keymap.set(mode, 's', '<Nop>') end
 end
 
 H.get_line_cols = function(line_num) return vim.fn.getline(line_num):len() end

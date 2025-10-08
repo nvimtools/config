@@ -15,7 +15,7 @@ git module deps:
 
 git module basics:
   url: https://github.com/echasnovski/mini.basics
-  rev: d78ba78dbd58ae391b547a2827b7a190135ef694
+  rev: 6182df967709e3cd92b6e090c653cac4e872d6e3
 
 git module completion:
   url: https://github.com/echasnovski/mini.completion
@@ -43,7 +43,7 @@ git module pairs:
 
 git module surround:
   url: https://github.com/echasnovski/mini.surround
-  rev: 61db6babafbd10e862a7ac4713fa043126329247
+  rev: fc6fbc319b2d686c524d71c7feda20f71af15b8e
 
 rule mini:
   export: lua/mini/
