@@ -116,8 +116,8 @@
 --- - To stop LSP server from suggesting snippets, disable (set to `false`) the
 ---   following capability during LSP server start:
 ---   `textDocument.completion.completionItem.snippetSupport`.
---- - If snippet body doesn't contain tabstops, `lsp_completion.snippet_insert`
----   is not called and text is inserted as is.
+--- - If snippet body doesn't contain tabstop, variable, tab, or newline,
+---   `lsp_completion.snippet_insert` is not called and text is inserted as-is.
 ---
 --- # Notes ~
 ---
@@ -689,6 +689,10 @@ H.keys = {
   ctrl_n = vim.api.nvim_replace_termcodes('<C-g><C-g><C-n>', true, false, true),
 }
 
+-- Flags for whether there is support for dedicated options
+H.has_winborder = vim.fn.has('nvim-0.11') == 1
+H.has_pumborder = vim.fn.exists('+pumborder') == 1 -- Neovim>=0.12
+
 -- Caches for different actions -----------------------------------------------
 -- Field `lsp` is a table describing state of all used LSP requests. It has the
 -- following structure:
@@ -1243,11 +1247,14 @@ H.lsp_completion_response_items_to_complete_items = function(items)
 
     local is_snippet_kind = item.kind == snippet_kind
     local is_snippet_format = item.insertTextFormat == snippet_inserttextformat
-    -- Treat item as snippet only if it has tabstops or variables. This is
-    -- important to make "implicit" expand work with LSP servers that report
-    -- even regular words as `InsertTextFormat.Snippet` (like `gopls`).
-    local needs_snippet_insert = (is_snippet_kind or is_snippet_format)
-      and (word:find('[^\\]%${?%w') ~= nil or word:find('^%${?%w') ~= nil)
+    -- Treat item as snippet only if it has tabstop, variable, tab, or newline.
+    -- It is important to make "implicit" expand work with LSP servers that
+    -- report even regular words as `InsertTextFormat.Snippet` (like `gopls`).
+    -- Otherwise it will "eat" the next typed non-keyword charater.
+    -- Account for tabs and newline to allow `snippet_insert` to deal with
+    -- reindenting and tab expansion.
+    local has_snippet_features = (word:find('[^\\]%${?%w') or word:find('^%${?%w') or word:find('[\n\t]')) ~= nil
+    local needs_snippet_insert = (is_snippet_kind or is_snippet_format) and has_snippet_features
 
     local details = item.labelDetails or {}
     -- NOTE: Using `table.concat({}, ' ')` would be cleaner but less performant
@@ -1338,7 +1345,7 @@ H.make_lsp_extra_actions = function(lsp_data)
   --   snippet is inserted and its session is active.
   local cur = vim.api.nvim_win_get_cursor(0)
   local extmark_opts = { end_row = cur[1] - 1, end_col = cur[2], right_gravity = false, end_right_gravity = true }
-  local track_id = vim.api.nvim_buf_set_extmark(0, H.ns_id, cur[1] - 1, cur[2], extmark_opts)
+  local track_extmark_id = vim.api.nvim_buf_set_extmark(0, H.ns_id, cur[1] - 1, cur[2], extmark_opts)
 
   vim.schedule(function()
     -- Do nothing if user exited Insert mode
@@ -1349,8 +1356,7 @@ H.make_lsp_extra_actions = function(lsp_data)
     -- created by server), but only if there is snippet (keep new characters
     -- for *only* text edits).
     if snippet ~= nil then
-      local ok, new = pcall(vim.api.nvim_buf_get_extmark_by_id, 0, H.ns_id, track_id, { details = true })
-      if ok then vim.api.nvim_buf_set_text(0, new[1], new[2], new[3].end_row, new[3].end_col, {}) end
+      H.del_extmark(track_extmark_id, true)
       pcall(vim.api.nvim_win_set_cursor, 0, cur)
     end
 
@@ -1364,6 +1370,8 @@ H.make_lsp_extra_actions = function(lsp_data)
     local prefix = string.rep('x', init_base.length)
     pcall(vim.api.nvim_buf_set_text, 0, from[1] - 1, from[2], to[1] - 1, to[2], { prefix })
     to = { from[1], from[2] + init_base.length }
+    local prefix_extmark_opts = { end_row = to[1] - 1, end_col = to[2] }
+    local prefix_extmark_id = vim.api.nvim_buf_set_extmark(0, H.ns_id, from[1] - 1, from[2], prefix_extmark_opts)
 
     -- Possibly adjust tracked range to come from LSP item. Clamp to existing
     -- text state because some LSP servers update `textEdit` during resolve
@@ -1385,6 +1393,9 @@ H.make_lsp_extra_actions = function(lsp_data)
 
     -- Expand snippet: remove base and insert at cursor
     pcall(vim.api.nvim_buf_set_text, 0, from[1] - 1, from[2], to[1] - 1, to[2], { '' })
+    -- - Ensure to work with bad `textEdit`, like not covering cursor position
+    vim.api.nvim_win_set_cursor(0, from)
+    H.del_extmark(prefix_extmark_id, true)
     local insert = H.get_config().lsp_completion.snippet_insert or MiniCompletion.default_snippet_insert
     insert(snippet)
   end)
@@ -1410,15 +1421,12 @@ H.apply_tracked_text_edits = function(client_id, text_edits, from, to)
   H.apply_text_edits(client_id, text_edits)
 
   -- Restore cursor position
-  local cursor_data = vim.api.nvim_buf_get_extmark_by_id(0, H.ns_id, cursor_extmark_id, {})
-  vim.api.nvim_buf_del_extmark(0, H.ns_id, cursor_extmark_id)
+  local cursor_data = H.del_extmark(cursor_extmark_id)
   pcall(vim.api.nvim_win_set_cursor, 0, { cursor_data[1] + 1, cursor_data[2] })
 
   -- Update in place tracked range
-  local from_data = vim.api.nvim_buf_get_extmark_by_id(0, H.ns_id, from_extmark_id, {})
-  vim.api.nvim_buf_del_extmark(0, H.ns_id, from_extmark_id)
-  local to_data = vim.api.nvim_buf_get_extmark_by_id(0, H.ns_id, to_extmark_id, {})
-  vim.api.nvim_buf_del_extmark(0, H.ns_id, to_extmark_id)
+  local from_data = H.del_extmark(from_extmark_id)
+  local to_data = H.del_extmark(to_extmark_id)
   return { from_data[1] + 1, from_data[2] }, { to_data[1] + 1, to_data[2] }
 end
 
@@ -1525,8 +1533,9 @@ end
 
 H.info_window_options = function()
   local win_config = H.get_config().window.info
-  local default_border = (vim.fn.exists('+winborder') == 1 and vim.o.winborder ~= '') and vim.o.winborder or 'single'
+  local default_border = (H.has_winborder and vim.o.winborder ~= '') and vim.o.winborder or 'single'
   local border = win_config.border or default_border
+  local pumborder = H.has_pumborder and vim.o.pumborder or ''
 
   -- Compute dimensions based on actually visible lines to be displayed
   local lines = H.compute_visible_md_lines(vim.api.nvim_buf_get_lines(H.info.bufnr, 0, -1, false))
@@ -1535,7 +1544,8 @@ H.info_window_options = function()
   -- Compute position
   local event = H.info.event
   local left_to_pum = event.col - 1
-  local right_to_pum = event.col + event.width + (event.scrollbar and 1 or 0)
+  local offset = (pumborder == '' or pumborder == 'none') and (event.scrollbar and 1 or 0) or 2
+  local right_to_pum = event.col + event.width + offset
 
   local border_offset = border == 'none' and 0 or 2
   local space_left = left_to_pum - border_offset
@@ -1699,7 +1709,7 @@ end
 
 H.signature_window_opts = function()
   local win_config = H.get_config().window.signature
-  local default_border = (vim.fn.exists('+winborder') == 1 and vim.o.winborder ~= '') and vim.o.winborder or 'single'
+  local default_border = (H.has_winborder and vim.o.winborder ~= '') and vim.o.winborder or 'single'
   local border = win_config.border or default_border
   local lines = vim.api.nvim_buf_get_lines(H.signature.bufnr, 0, -1, false)
   local height, width = H.floating_dimensions(lines, win_config.height, win_config.width)
@@ -1877,6 +1887,18 @@ H.get_lsp_edit_range = function(response_data)
     -- Account for `textEdit` can be either `TextEdit` or `InsertReplaceEdit`
     if type(item.textEdit) == 'table' then return item.textEdit.range or item.textEdit.insert end
   end
+end
+
+H.del_extmark = function(extmark_id, with_text)
+  local data = vim.api.nvim_buf_get_extmark_by_id(0, H.ns_id, extmark_id, { details = true })
+  vim.api.nvim_buf_del_extmark(0, H.ns_id, extmark_id)
+  -- Possibly remove extmark's text
+  if not with_text or data[1] == nil or data[3].end_row == nil then return data end
+  local start_row, start_col, end_row, end_col = data[1], data[2], data[3].end_row, data[3].end_col
+  if start_row < end_row or (start_row == end_row and start_col < end_col) then
+    vim.api.nvim_buf_set_text(0, start_row, start_col, end_row, end_col, { '' })
+  end
+  return data
 end
 
 H.is_whitespace = function(s)

@@ -15,11 +15,11 @@ git module deps:
 
 git module basics:
   url: https://github.com/echasnovski/mini.basics
-  rev: 6182df967709e3cd92b6e090c653cac4e872d6e3
+  rev: 131a4f91387dd490eb9d40b262129ca9fec5ff97
 
 git module completion:
   url: https://github.com/echasnovski/mini.completion
-  rev: 27483b0ad3f2d269a6a0ce7564171817bca8fdf2
+  rev: 3eb90e9c6c8d01f6b7a39fe03e1f3ff95edc0502
 
 git module ai:
   url: https://github.com/echasnovski/mini.ai
