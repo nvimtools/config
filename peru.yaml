@@ -11,39 +11,39 @@ imports:
 
 git module deps:
   url: https://github.com/echasnovski/mini.deps
-  rev: 4c11a93f841e9bfb001321796dae339c8cb57e44
+  rev: 8f6f74a8b68dbad02f1813dff4ddae5afeee92df
 
 git module basics:
   url: https://github.com/echasnovski/mini.basics
-  rev: 131a4f91387dd490eb9d40b262129ca9fec5ff97
+  rev: 862b940b1ea67993893c6fd39ca1000beed1af46
 
 git module completion:
   url: https://github.com/echasnovski/mini.completion
-  rev: 3eb90e9c6c8d01f6b7a39fe03e1f3ff95edc0502
+  rev: 7c5edfc0e479dd4edd898cc9ddd1920d8c1ce420
 
 git module ai:
   url: https://github.com/echasnovski/mini.ai
-  rev: 11c57180bc9084089206e211ac7aa598bedc9673
+  rev: 0d3c9cf22e37b86b7a0dfbe7ef129ee7a5f4f93c
 
 git module comment:
   url: https://github.com/echasnovski/mini.comment
-  rev: c40bc46e72f41d3db265f6d86deb3dc259c0985d
+  rev: a0c721115faff8d05505c0a12dab410084d9e536
 
 git module bufremove:
   url: https://github.com/echasnovski/mini.bufremove
-  rev: 1b5d7e7bc81cd02476bdd964c3d850c48eb91a07
+  rev: 10857aa39160c127694151828914df3131ba83b6
 
 git module jump:
   url: https://github.com/echasnovski/mini.jump
-  rev: 7574c48a707aedcf1ad428a9cdefb8fdf871a638
+  rev: 99799e8ca33fe936b81a70b5ab9a081f8794c8a1
 
 git module pairs:
   url: https://github.com/echasnovski/mini.pairs
-  rev: b9aada8c0e59f2b938e98fbf4eae0799eba96ad9
+  rev: b316e68f2d242d5bd010deaab645daa27ed86297
 
 git module surround:
   url: https://github.com/echasnovski/mini.surround
-  rev: 444e155147e2b5159dd28a65f9736254c16cb817
+  rev: 88c52297ed3e69ecf9f8652837888ecc727a28ee
 
 rule mini:
   export: lua/mini/
