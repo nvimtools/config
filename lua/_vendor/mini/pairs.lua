@@ -143,21 +143,21 @@ MiniPairs.config = {
   -- - <action> - one of "open", "close", "closeopen".
   -- - <pair> - two character string for pair to be used.
   -- By default pair is not inserted after `\`, quotes are not recognized by
-  -- <CR>, `'` does not insert pair after a letter.
+  -- <CR>, `'` does not insert the pair after a letter.
   -- Only parts of tables can be tweaked (others will use these defaults).
   -- Supply `false` instead of table to not map particular key.
   mappings = {
-    ['('] = { action = 'open', pair = '()', neigh_pattern = '[^\\].' },
-    ['['] = { action = 'open', pair = '[]', neigh_pattern = '[^\\].' },
-    ['{'] = { action = 'open', pair = '{}', neigh_pattern = '[^\\].' },
+    ['('] = { action = 'open', pair = '()', neigh_pattern = '^[^\\]' },
+    ['['] = { action = 'open', pair = '[]', neigh_pattern = '^[^\\]' },
+    ['{'] = { action = 'open', pair = '{}', neigh_pattern = '^[^\\]' },
 
-    [')'] = { action = 'close', pair = '()', neigh_pattern = '[^\\].' },
-    [']'] = { action = 'close', pair = '[]', neigh_pattern = '[^\\].' },
-    ['}'] = { action = 'close', pair = '{}', neigh_pattern = '[^\\].' },
+    [')'] = { action = 'close', pair = '()', neigh_pattern = '^[^\\]' },
+    [']'] = { action = 'close', pair = '[]', neigh_pattern = '^[^\\]' },
+    ['}'] = { action = 'close', pair = '{}', neigh_pattern = '^[^\\]' },
 
-    ['"'] = { action = 'closeopen', pair = '""', neigh_pattern = '[^\\].',   register = { cr = false } },
-    ["'"] = { action = 'closeopen', pair = "''", neigh_pattern = '[^%a\\].', register = { cr = false } },
-    ['`'] = { action = 'closeopen', pair = '``', neigh_pattern = '[^\\].',   register = { cr = false } },
+    ['"'] = { action = 'closeopen', pair = '""', neigh_pattern = '^[^\\]',   register = { cr = false } },
+    ["'"] = { action = 'closeopen', pair = "''", neigh_pattern = '^[^%a\\]', register = { cr = false } },
+    ['`'] = { action = 'closeopen', pair = '``', neigh_pattern = '^[^\\]',   register = { cr = false } },
   },
 }
 --minidoc_afterlines_end
@@ -177,11 +177,11 @@ MiniPairs.config = {
 ---@param pair_info table Table with pair information. Fields:
 ---   - <action> - one of "open" for |MiniPairs.open()|,
 ---     "close" for |MiniPairs.close()|, or "closeopen" for |MiniPairs.closeopen()|.
----   - <pair> - two character string to be used as argument for action function.
+---   - <pair> - two character string to be passed to an action function.
 ---     Can contain multibyte characters.
----   - <neigh_pattern> - optional 'two character' neighborhood pattern to be
----     used as argument for action function. Note: neighborhood might contain
----     multiple characters.
+---   - <neigh_pattern> - optional neighborhood pattern to be passed to an action
+---     function. Will be matched against two character neighborhood (might
+---     contain multibyte characters).
 ---     Default: `'..'` (no restriction from neighborhood).
 ---   - <register> - optional table with information about whether this pair will
 ---     be recognized by <BS> (in |MiniPairs.bs()|) and/or <CR> (in |MiniPairs.cr()|).
@@ -289,6 +289,8 @@ MiniPairs.open = function(pair, neigh_pattern)
   -- This can happen in a big file with tree-sitter highlighting enabled.
   H.with_temp_option('lazyredraw', true)
 
+  -- NOTE: Do not ensure no wildmenu because by the time arrow is executed
+  -- wildmenu should already (usually) be hidden due to inserting `pair`
   return pair .. H.get_arrow_key('left')
 end
 
@@ -309,7 +311,7 @@ end
 MiniPairs.close = function(pair, neigh_pattern)
   local close = H.get_close_char(pair)
   local move_right = not H.is_disabled() and H.neigh_match(neigh_pattern) and H.get_neigh('right') == close
-  return move_right and H.get_arrow_key('right') or close
+  return move_right and H.get_arrow_key('right', true) or close
 end
 
 --- Process "closeopen" symbols
@@ -327,7 +329,7 @@ end
 ---@return string Keys performing "closeopen" action.
 MiniPairs.closeopen = function(pair, neigh_pattern)
   local move_right = not H.is_disabled() and H.get_neigh('right') == H.get_close_char(pair)
-  return move_right and H.get_arrow_key('right') or MiniPairs.open(pair, neigh_pattern)
+  return move_right and H.get_arrow_key('right', true) or MiniPairs.open(pair, neigh_pattern)
 end
 
 --- Process |<BS>|
@@ -416,7 +418,7 @@ H.keys = {
   bs         = escape('<BS>'),
   cr         = escape('<CR>'),
   del        = escape('<Del>'),
-  keep_undo  = escape('<C-g>U'),
+  ctrl_y     = escape('<C-y>'),
   -- Using left/right keys in insert mode breaks undo sequence and, more
   -- importantly, dot-repeat. To avoid this, use 'i_CTRL-G_U' mapping.
   -- Use `H.get_arrow_key()` for keys instead of direct from this table.
@@ -611,9 +613,17 @@ H.neigh_match = function(pattern) return H.get_neigh('whole'):find(pattern or ''
 H.get_open_char = function(x) return vim.fn.strcharpart(x, 0, 1) end
 H.get_close_char = function(x) return vim.fn.strcharpart(x, 1, 1) end
 
-H.get_arrow_key = function(key)
-  return vim.fn.mode() == 'i' and (key == 'right' and H.keys.right_undo or H.keys.left_undo)
-    or (key == 'right' and H.keys.right or H.keys.left)
+H.get_arrow_key = function(key, ensure_no_wildmenu)
+  if vim.fn.mode() == 'i' then
+    -- Take into account that `virtualedit=all` can go into inline virtual text
+    H.with_temp_option('virtualedit', 'none')
+    return key == 'right' and H.keys.right_undo or H.keys.left_undo
+  end
+  local prefix = ''
+  -- In Command-line mode <Left> / <Right> act like <C-p> / <C-n> if wildmenu
+  -- is shown. Make sure that arrow key moves cursor.
+  if vim.fn.mode() == 'c' and ensure_no_wildmenu then prefix = vim.fn.wildmenumode() == 1 and H.keys.ctrl_y or '' end
+  return prefix .. (key == 'right' and H.keys.right or H.keys.left)
 end
 
 H.map = function(mode, lhs, rhs, opts)

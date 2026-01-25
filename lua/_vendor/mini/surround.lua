@@ -916,13 +916,10 @@ MiniSurround.user_input = function(prompt, text)
   -- using that string. Although doable with very obscure string, this is not
   -- very clean.
   -- Overcome this by adding temporary keystroke listener.
-  local on_key = vim.on_key or vim.register_keystroke_callback
   local was_cancelled = false
-  on_key(function(key)
-    if key == vim.api.nvim_replace_termcodes('<Esc>', true, true, true) then was_cancelled = true end
-  end, H.ns_id.input)
+  vim.on_key(function(key) was_cancelled = was_cancelled or key == '\27' end, H.ns_id.input)
 
-  -- Ask for input
+  -- Ask for input. Use `pcall` to allow `<C-c>` to cancel user input
   -- NOTE: it would be GREAT to make this work with `vim.ui.input()` but I
   -- didn't find a way to make it work without major refactor of whole module.
   -- The main issue is that `vim.ui.input()` is designed to perform action in
@@ -933,17 +930,12 @@ MiniSurround.user_input = function(prompt, text)
   -- immediately and proceed in main event loop. Couldn't find a relatively
   -- simple way to stop execution of this current function until `ui.input()`'s
   -- callback finished execution.
-  local opts = { prompt = '(mini.surround) ' .. prompt .. ': ', default = text or '' }
   vim.cmd('echohl Question')
-  -- Use `pcall` to allow `<C-c>` to cancel user input
-  local ok, res = pcall(vim.fn.input, opts)
-  vim.cmd([[echohl None | echo '' | redraw]])
+  local ok, res = pcall(vim.fn.input, { prompt = '(mini.surround) ' .. prompt .. ': ', default = text or '' })
+  vim.cmd('echohl None | echo "" | redraw')
 
-  -- Stop key listening
-  on_key(nil, H.ns_id.input)
-
-  if not ok or was_cancelled then return end
-  return res
+  vim.on_key(nil, H.ns_id.input)
+  return (ok and not was_cancelled) and res or nil
 end
 
 --- Generate common surrounding specifications
@@ -1877,6 +1869,12 @@ H.is_point_inside_spans = function(point, spans)
   return false
 end
 
+H.str_utfindex = function(s, i) return vim.str_utfindex(s, 'utf-32', i) end
+if vim.fn.has('nvim-0.11') == 0 then H.str_utfindex = function(s, i) return (vim.str_utfindex(s, i)) end end
+
+H.str_byteindex = function(s, i) return vim.str_byteindex(s, 'utf-32', i) end
+if vim.fn.has('nvim-0.11') == 0 then H.str_byteindex = function(s, i) return vim.str_byteindex(s, i) end end
+
 -- Work with operator marks ---------------------------------------------------
 H.get_marks_pos = function(mode)
   -- Region is inclusive on both ends
@@ -1922,10 +1920,10 @@ H.get_marks_pos = function(mode)
     -- Use `math.min()` because it might lead to 'index out of range' error
     -- when mark is positioned at the end of line (that extra space which is
     -- selected when selecting with `v$`)
-    local utf_index = vim.str_utfindex(line2, math.min(#line2, pos2[2]))
+    local utf_index = H.str_utfindex(line2, math.min(#line2, pos2[2]))
     -- This returns the last byte inside character because `vim.str_byteindex()`
     -- 'rounds upwards to the end of that sequence'.
-    pos2[2] = vim.str_byteindex(line2, utf_index)
+    pos2[2] = H.str_byteindex(line2, utf_index)
   end
 
   return {

@@ -15,15 +15,15 @@ git module deps:
 
 git module basics:
   url: https://github.com/echasnovski/mini.basics
-  rev: 862b940b1ea67993893c6fd39ca1000beed1af46
+  rev: 9f80f04cf4732939514b304e7c9146b9dc8e54c3
 
 git module completion:
   url: https://github.com/echasnovski/mini.completion
-  rev: 7c5edfc0e479dd4edd898cc9ddd1920d8c1ce420
+  rev: 4d451f82f193f6751719935a63d16ccb79a76e0b
 
 git module ai:
   url: https://github.com/echasnovski/mini.ai
-  rev: 0d3c9cf22e37b86b7a0dfbe7ef129ee7a5f4f93c
+  rev: 9eae720f2b20f6ad28cbfa0ddc524e10dc2c3201
 
 git module comment:
   url: https://github.com/echasnovski/mini.comment
@@ -39,11 +39,11 @@ git module jump:
 
 git module pairs:
   url: https://github.com/echasnovski/mini.pairs
-  rev: b316e68f2d242d5bd010deaab645daa27ed86297
+  rev: 4089aa6ea6423e02e1a8326a7a7a00159f6f5e04
 
 git module surround:
   url: https://github.com/echasnovski/mini.surround
-  rev: 88c52297ed3e69ecf9f8652837888ecc727a28ee
+  rev: f9358544ed06bc10197e698b7fc8dc5963be3f4b
 
 rule mini:
   export: lua/mini/
