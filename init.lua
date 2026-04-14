@@ -72,14 +72,17 @@ local working, ret = pcall(function()
 		now(function()
 			add({
 				source = 'nvim-treesitter/nvim-treesitter',
+				checkout = 'main',
 				hooks = {
 					post_checkout = function() vim.cmd('TSUpdate') end,
 				},
 			})
-			require('nvim-treesitter.configs').setup({
-				ensure_installed = { 'lua', 'vimdoc' },
-				highlight = { enable = true },
-			} --[[@as TSConfig|{}]])
+			local supported_languages = { 'lua', 'vimdoc' }
+			require('nvim-treesitter').install(supported_languages)
+			vim.api.nvim_create_autocmd('FileType', {
+				pattern = supported_languages,
+				callback = function() vim.treesitter.start() end,
+			})
 		end)
 
 		now(function()
