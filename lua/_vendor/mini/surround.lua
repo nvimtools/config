@@ -484,6 +484,15 @@ local H = {}
 ---   require('mini.surround').setup({}) -- replace {} with your config table
 --- <
 MiniSurround.setup = function(config)
+  -- TODO: Remove after Neovim=0.9 support is dropped
+  if vim.fn.has('nvim-0.10') == 0 then
+    vim.notify(
+      '(mini.surround) Neovim<0.10 is soft deprecated (module works but is not supported).'
+        .. " It will be deprecated after the next 'mini.nvim' release (module might not work)."
+        .. ' Please update your Neovim version.'
+    )
+  end
+
   -- Export module
   _G.MiniSurround = MiniSurround
 
@@ -1180,53 +1189,51 @@ end
 H.apply_config = function(config)
   MiniSurround.config = config
 
-  local expr_map = function(lhs, rhs, desc) H.map('n', lhs, rhs, { expr = true, desc = desc }) end
-  local map = function(lhs, rhs, desc) H.map('n', lhs, rhs, { desc = desc }) end
+  local maps, maps_l, maps_n = config.mappings, {}, {}
+  local suf_l, suf_n = maps.suffix_last, maps.suffix_next
+  for k, v in pairs(maps) do
+    -- Don't create extended mapping if user chose not to create a regular one
+    maps_l[k] = (v ~= '' and suf_l ~= '') and (v .. suf_l) or ''
+    maps_n[k] = (v ~= '' and suf_n ~= '') and (v .. suf_n) or ''
+  end
+
+  local m = function(mode, lhs, rhs, desc) H.map(mode, lhs, rhs, { expr = true, desc = desc }) end
 
   --stylua: ignore start
-  -- Make regular mappings
-  local m = config.mappings
+  m('n', maps.add, H.make_operator('add', nil, true), 'Add surrounding')
+  H.map('x', maps.add, ':<C-u>lua MiniSurround.add("visual")<CR>', { desc = 'Add surrounding to selection' })
 
-  expr_map(m.add,     H.make_operator('add', nil, true), 'Add surrounding')
-  expr_map(m.delete,  H.make_operator('delete'),         'Delete surrounding')
-  expr_map(m.replace, H.make_operator('replace'),        'Replace surrounding')
+  m('n', maps.delete,   H.make_operator('delete', nil),    'Delete surrounding')
+  m('n', maps_l.delete, H.make_operator('delete', 'prev'), 'Delete previous surrounding')
+  m('n', maps_n.delete, H.make_operator('delete', 'next'), 'Delete next surrounding')
 
-  map(m.find,      H.make_action('find', 'right'), 'Find right surrounding')
-  map(m.find_left, H.make_action('find', 'left'),  'Find left surrounding')
-  map(m.highlight, H.make_action('highlight'),     'Highlight surrounding')
+  m('n', maps.replace,   H.make_operator('replace', nil),    'Replace surrounding')
+  m('n', maps_l.replace, H.make_operator('replace', 'prev'), 'Replace previous surrounding')
+  m('n', maps_n.replace, H.make_operator('replace', 'next'), 'Replace next surrounding')
 
-  H.map('x', m.add, [[:<C-u>lua MiniSurround.add('visual')<CR>]], { desc = 'Add surrounding to selection' })
+  m('n', maps.find,   H.make_action('find', 'right', nil),    'Find right surrounding')
+  m('x', maps.find,   H.make_action('find', 'right', nil),    'Find right surrounding')
+  m('o', maps.find,   H.make_action('find', 'right', nil),    'Find right surrounding')
+  m('n', maps_l.find, H.make_action('find', 'right', 'prev'), 'Find previous right surrounding')
+  m('x', maps_l.find, H.make_action('find', 'right', 'prev'), 'Find previous right surrounding')
+  m('o', maps_l.find, H.make_action('find', 'right', 'prev'), 'Find previous right surrounding')
+  m('n', maps_n.find, H.make_action('find', 'right', 'next'), 'Find next right surrounding')
+  m('x', maps_n.find, H.make_action('find', 'right', 'next'), 'Find next right surrounding')
+  m('o', maps_n.find, H.make_action('find', 'right', 'next'), 'Find next right surrounding')
 
-  -- Make extended mappings
-  local suffix_expr_map = function(lhs, suffix, rhs, desc)
-    -- Don't create extended mapping if user chose not to create regular one
-    if lhs == '' then return end
-    expr_map(lhs .. suffix, rhs, desc)
-  end
-  local suffix_map = function(lhs, suffix, rhs, desc)
-    if lhs == '' then return end
-    map(lhs .. suffix, rhs, desc)
-  end
+  m('n', maps.find_left,   H.make_action('find', 'left', nil),    'Find left surrounding')
+  m('x', maps.find_left,   H.make_action('find', 'left', nil),    'Find left surrounding')
+  m('o', maps.find_left,   H.make_action('find', 'left', nil),    'Find left surrounding')
+  m('n', maps_l.find_left, H.make_action('find', 'left', 'prev'), 'Find previous left surrounding')
+  m('x', maps_l.find_left, H.make_action('find', 'left', 'prev'), 'Find previous left surrounding')
+  m('o', maps_l.find_left, H.make_action('find', 'left', 'prev'), 'Find previous left surrounding')
+  m('n', maps_n.find_left, H.make_action('find', 'left', 'next'), 'Find next left surrounding')
+  m('x', maps_n.find_left, H.make_action('find', 'left', 'next'), 'Find next left surrounding')
+  m('o', maps_n.find_left, H.make_action('find', 'left', 'next'), 'Find next left surrounding')
 
-  if m.suffix_last ~= '' then
-    local suff = m.suffix_last
-    suffix_expr_map(m.delete,  suff, H.make_operator('delete',  'prev'), 'Delete previous surrounding')
-    suffix_expr_map(m.replace, suff, H.make_operator('replace', 'prev'), 'Replace previous surrounding')
-
-    suffix_map(m.find,      suff, H.make_action('find', 'right',  'prev'), 'Find previous right surrounding')
-    suffix_map(m.find_left, suff, H.make_action('find', 'left',   'prev'), 'Find previous left surrounding')
-    suffix_map(m.highlight, suff, H.make_action('highlight', nil, 'prev'), 'Highlight previous surrounding')
-  end
-
-  if m.suffix_next ~= '' then
-    local suff = m.suffix_next
-    suffix_expr_map(m.delete,  suff, H.make_operator('delete',  'next'), 'Delete next surrounding')
-    suffix_expr_map(m.replace, suff, H.make_operator('replace', 'next'), 'Replace next surrounding')
-
-    suffix_map(m.find,      suff, H.make_action('find', 'right',  'next'), 'Find next right surrounding')
-    suffix_map(m.find_left, suff, H.make_action('find', 'left',   'next'), 'Find next left surrounding')
-    suffix_map(m.highlight, suff, H.make_action('highlight', nil, 'next'), 'Highlight next surrounding')
-  end
+  m('n', maps.highlight,   H.make_action('highlight', nil, nil),    'Highlight surrounding')
+  m('n', maps_l.highlight, H.make_action('highlight', nil, 'prev'), 'Highlight previous surrounding')
+  m('n', maps_n.highlight, H.make_action('highlight', nil, 'next'), 'Highlight next surrounding')
   --stylua: ignore end
 end
 
@@ -1276,9 +1283,9 @@ end
 
 H.make_action = function(task, direction, search_method)
   return function()
-    if H.is_disabled() then return end
+    if H.is_disabled() then return '<Esc>' end
     H.cache = { count = vim.v.count1, direction = direction, search_method = search_method }
-    return MiniSurround[task]()
+    return '<Cmd>lua MiniSurround.' .. task .. '()<CR>'
   end
 end
 
@@ -1979,16 +1986,16 @@ end
 -- Work with user input -------------------------------------------------------
 H.user_surround_id = function(sur_type)
   -- Get from user single character surrounding identifier
-  local needs_help_msg = true
+  local needs_reminder = true
   vim.defer_fn(function()
-    if not needs_help_msg then return end
+    if not needs_reminder then return end
 
-    local msg = string.format('Enter %s surrounding identifier (single character) ', sur_type)
+    local msg = string.format('Reminder to press %s surrounding id ', sur_type)
     H.echo(msg)
     H.cache.msg_shown = true
   end, 1000)
   local ok, char = pcall(vim.fn.getcharstr)
-  needs_help_msg = false
+  needs_reminder = false
   H.unecho()
 
   -- Terminate if couldn't get input (like with <C-c>) or it is `<Esc>`

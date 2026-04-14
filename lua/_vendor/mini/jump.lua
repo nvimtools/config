@@ -12,8 +12,8 @@
 --- - Highlight (after customizable delay) all possible target characters and
 ---   stop it after some (customizable) idle time.
 ---
---- - Normal, Visual, and Operator-pending (with full dot-repeat) modes are
----   supported.
+--- - Normal, Visual, and Operator-pending (with dot-repeat as in clean Neovim)
+---   modes are supported.
 ---
 --- This module follows vim's 'ignorecase' and 'smartcase' options. When
 --- 'ignorecase' is set, f, F, t, T will match case-insensitively. When
@@ -82,6 +82,15 @@ local H = {}
 ---   require('mini.jump').setup({}) -- replace {} with your config table
 --- <
 MiniJump.setup = function(config)
+  -- TODO: Remove after Neovim=0.9 support is dropped
+  if vim.fn.has('nvim-0.10') == 0 then
+    vim.notify(
+      '(mini.jump) Neovim<0.10 is soft deprecated (module works but is not supported).'
+        .. " It will be deprecated after the next 'mini.nvim' release (module might not work)."
+        .. ' Please update your Neovim version.'
+    )
+  end
+
   -- Export module
   _G.MiniJump = MiniJump
 
@@ -181,55 +190,67 @@ MiniJump.state = {
 MiniJump.jump = function(target, backward, till, n_times)
   if H.is_disabled() then return end
 
+  -- Dot-repeat should not change the state, so save it to later restore
+  local is_expr, is_dot_repeat = MiniJump._is_expr, MiniJump._is_expr and not MiniJump._is_expr_init
+  MiniJump._is_expr, MiniJump._is_expr_init = nil, nil
+  local state_snapshot = is_dot_repeat and vim.deepcopy(MiniJump.state) or nil
+
   -- Cache inputs for future use
   H.update_state(target, backward, till, n_times)
 
-  if MiniJump.state.target == nil then
-    H.message('Can not jump because there is no recent `target`.')
-    return
-  end
-
-  -- Determine if target is present anywhere in order to correctly enter
-  -- jumping mode. If not, jumping mode is not possible.
-  local search_pattern = [[\V]] .. vim.fn.escape(MiniJump.state.target, [[\]])
-  local target_is_present = vim.fn.search(search_pattern, 'wn') ~= 0
-  if not target_is_present then return end
+  if MiniJump.state.target == nil then return H.message('Can not jump because there is no recent `target`.') end
 
   -- Construct search and highlight pattern data
   local pattern, hl_pattern, flags = H.make_search_data()
 
   -- Delay highlighting after stopping previous one
+  -- Update highlighting immediately if any highlighting is already present
   local config = H.get_config()
   H.timers.highlight:stop()
-  H.timers.highlight:start(
-    -- Update highlighting immediately if any highlighting is already present
-    H.is_highlighting() and 0 or config.delay.highlight,
-    0,
-    vim.schedule_wrap(function() H.highlight(hl_pattern) end)
-  )
+  local hl = vim.schedule_wrap(function() H.highlight(hl_pattern) end)
+  H.timers.highlight:start(H.is_highlighting() and 0 or config.delay.highlight, 0, hl)
 
   -- Start idle timer after stopping previous one
   H.timers.idle_stop:stop()
   H.timers.idle_stop:start(config.delay.idle_stop, 0, vim.schedule_wrap(function() MiniJump.stop_jumping() end))
 
+  -- Force charwise selection in Operator-pending expression mapping
+  if is_expr then vim.cmd('normal! v') end
+
   -- Make jump(s)
   H.cache.n_cursor_moved = 0
-  local init_cursor_data = H.get_cursor_data()
   local was_jumping = MiniJump.state.jumping
   MiniJump.state.jumping = true
   if not was_jumping then H.trigger_event('MiniJumpStart') end
   H.trigger_event('MiniJumpJump')
 
+  local has_jumped = false
   for _ = 1, MiniJump.state.n_times do
-    vim.fn.search(pattern, flags)
+    local row = vim.fn.search(pattern, flags)
+    has_jumped = has_jumped or row > 0
   end
 
   -- Open enough folds to show jump
-  vim.cmd('normal! zv')
+  if has_jumped then vim.cmd('normal! zv') end
 
   -- Track cursor position to account for movement not caught by `CursorMoved`
   H.cache.latest_cursor = H.get_cursor_data()
-  H.cache.has_changed_cursor = not vim.deep_equal(H.cache.latest_cursor, init_cursor_data)
+
+  -- Restore the state if needed. The jumping state is applied if there was jump
+  -- or if it is possible to jump in other direction (i.e. target is present).
+  MiniJump.state = is_dot_repeat and state_snapshot or MiniJump.state
+  local search_pattern = '\\V' .. vim.fn.escape(MiniJump.state.target, '\\')
+  MiniJump.state.jumping = has_jumped or vim.fn.search(search_pattern, 'wn') ~= 0
+
+  -- Nothing else to do if there was a jump
+  if has_jumped then return end
+
+  -- Ensure to stop jumping on next non-jump movement
+  if MiniJump.state.jumping then H.cache.n_cursor_moved = H.cache.n_cursor_moved + 1 end
+
+  -- When in Operator-pending mapping, disable charwise selection to prevent
+  -- a character from being consumed (due to selection of a cursor cell)
+  if is_expr then vim.cmd('normal! v') end
 end
 
 --- Make smart jump
@@ -366,7 +387,8 @@ H.create_autocommands = function()
   end
 
   au('CursorMoved', '*', H.on_cursormoved, 'On CursorMoved')
-  au({ 'BufLeave', 'InsertEnter' }, '*', MiniJump.stop_jumping, 'Stop jumping')
+  -- Check current buffer not immediately to allow "temporary buffer switch"
+  au({ 'BufLeave', 'InsertEnter' }, '*', vim.schedule_wrap(H.stop_if_curbuf), 'Stop jumping')
   au('ColorScheme', '*', H.create_default_hl, 'Ensure colors')
 end
 
@@ -383,22 +405,24 @@ H.make_expr_jump = function(backward, till)
   return function()
     if H.is_disabled() then return '' end
 
-    H.update_state(nil, backward, till, vim.v.count1)
+    local count = vim.v.count1
+    H.update_state(nil, backward, till, count)
 
     -- Ask for `target` for non-repeating jump as this will be used only in
     -- operator-pending mode. Dot-repeat is supported via expression-mapping.
-    local is_repeat_jump = backward == nil or till == nil
-    local target = is_repeat_jump and MiniJump.state.target or H.get_target()
-
-    -- Stop if user supplied invalid target
-    if target == nil then return '<Esc>' end
+    local isnt_repeat_jump = backward ~= nil and till ~= nil
+    local target = isnt_repeat_jump and H.get_target() or nil
+    if isnt_repeat_jump and target == nil then return '<Esc>' end
     H.update_state(target)
 
-    vim.schedule(function()
-      if H.cache.has_changed_cursor then return end
-      vim.cmd('undo!')
-    end)
-    return 'v<Cmd>lua MiniJump.jump()<CR>'
+    -- Set a flag to distinguish first call from dot-repeat
+    MiniJump._is_expr_init = true
+
+    -- Encode state in expression for dot-repeat. Important to use `target=nil`
+    -- for `repeat_jump` case to have it using latest jumping state during
+    -- dot-repeat also (as does `nvim --clean`).
+    local args = string.format('%s,%s,%s,%s', vim.inspect(target), backward, till, count)
+    return '<Cmd>lua MiniJump._is_expr=true; MiniJump.jump(' .. args .. ')<CR>'
   end
 end
 
@@ -410,6 +434,10 @@ H.on_cursormoved = function()
     -- Stop jumping only if `CursorMoved` was not a result of smart jump
     if H.cache.n_cursor_moved > 1 then MiniJump.stop_jumping() end
   end
+end
+
+H.stop_if_curbuf = function(ev)
+  if ev.buf == vim.api.nvim_get_current_buf() then MiniJump.stop_jumping() end
 end
 
 -- Pattern matching -----------------------------------------------------------
@@ -457,8 +485,7 @@ end
 
 -- Highlighting ---------------------------------------------------------------
 H.highlight = function(pattern)
-  -- Don't do anything if already highlighting input pattern
-  if H.is_highlighting(pattern) then return end
+  if H.is_highlighting(pattern) or not MiniJump.state.jumping then return end
 
   -- Stop highlighting possible previous pattern. Needed to adjust highlighting
   -- when inside jumping but a different kind one. Example: first jump with
@@ -551,16 +578,16 @@ end
 H.get_cursor_data = function() return { vim.api.nvim_get_current_win(), vim.api.nvim_win_get_cursor(0) } end
 
 H.get_target = function()
-  local needs_help_msg = true
+  local needs_reminder = true
   vim.defer_fn(function()
-    if not needs_help_msg then return end
-    H.echo('Enter target single character ')
+    if not needs_reminder then return end
+    H.echo('Reminder to press a target single character ')
     H.cache.msg_shown = true
   end, 1000)
 
   H.trigger_event('MiniJumpGetTarget')
   local ok, char = pcall(vim.fn.getcharstr)
-  needs_help_msg = false
+  needs_reminder = false
   H.unecho()
 
   -- Terminate if couldn't get input (like with <C-c>) or it is `<Esc>`
