@@ -5,7 +5,7 @@
 --- Features:
 --- - Commenting in Normal mode respects |count| and is dot-repeatable.
 ---
---- - Comment structure by default is inferred from 'commentstring': either
+--- - Comment structure by default is inferred from |'commentstring'|: either
 ---   from current buffer or from locally active tree-sitter language.
 ---   It can be customized via `options.custom_commentstring`
 ---   (see |MiniComment.config| for details).
@@ -22,7 +22,7 @@
 --- - Preserve trailing whitespace in empty lines.
 ---
 --- Notes:
---- - To use tree-sitter aware commenting, global value of 'commentstring'
+--- - To use tree-sitter aware commenting, global value of |'commentstring'|
 ---   should be `''` (empty string). This is the default value, so make sure to
 ---   not set it manually to a different value.
 ---
@@ -62,15 +62,6 @@ local H = {}
 ---   require('mini.comment').setup({}) -- replace {} with your config table
 --- <
 MiniComment.setup = function(config)
-  -- TODO: Remove after Neovim=0.9 support is dropped
-  if vim.fn.has('nvim-0.10') == 0 then
-    vim.notify(
-      '(mini.comment) Neovim<0.10 is soft deprecated (module works but is not supported).'
-        .. " It will be deprecated after the next 'mini.nvim' release (module might not work)."
-        .. ' Please update your Neovim version.'
-    )
-  end
-
   -- Export module
   _G.MiniComment = MiniComment
 
@@ -87,18 +78,18 @@ end
 ---
 --- ## Custom commentstring ~
 ---
---- `options.custom_commentstring` can be a function customizing 'commentstring'
+--- `options.custom_commentstring` can be a function customizing |'commentstring'|
 --- option used to infer comment structure. It is called once before every
 --- commenting action with the following arguments:
---- - `ref_position` - position at which to compute 'commentstring' (might be
+--- - `ref_position` - position at which to compute |'commentstring'| (might be
 ---   relevant for a text with locally different commenting rules). Its structure
 ---   is the same as `opts.ref_position` in |MiniComment.toggle_lines()|.
 ---
---- Its output should be a valid 'commentstring' (string containing `%s`).
+--- Its output should be a valid |'commentstring'| (string containing `%s`).
 ---
 --- If not set or the output is `nil`, |MiniComment.get_commentstring()| is used.
 ---
---- For example, this option can be used to always use buffer 'commentstring'
+--- For example, this option can be used to always use buffer |'commentstring'|
 --- even in case of present active tree-sitter parser: >lua
 ---
 ---   require('mini.comment').setup({
@@ -119,7 +110,7 @@ end
 --- - <ref_position> `(table|nil)` - reference position.
 ---
 --- Notes:
---- - Changing 'commentstring' in `hooks.pre` is allowed and will take effect.
+--- - Changing |'commentstring'| in `hooks.pre` is allowed and will take effect.
 --- - If hook returns `false`, any further action is terminated.
 MiniComment.config = {
   -- Options which control module behavior
@@ -175,9 +166,9 @@ MiniComment.config = {
 --- dot-repeatability works): it should be called without arguments inside
 --- expression mapping and with argument when action should be performed.
 ---
----@param mode string|nil Optional string with 'operatorfunc' mode (see |g@|).
+---@param mode string|nil Optional string with |'operatorfunc'| mode (see |g@|).
 ---
----@return string|nil 'g@' if called without argument, '' otherwise (but after
+---@return string|nil `'g@'` if called without argument, `''` otherwise (but after
 ---   performing action).
 MiniComment.operator = function(mode)
   if H.is_disabled() then return '' end
@@ -222,7 +213,7 @@ end
 ---
 --- # Notes ~
 ---
---- - Comment structure is inferred from buffer's 'commentstring' option or
+--- - Comment structure is inferred from buffer's |'commentstring'| option or
 ---   local language of tree-sitter parser (if active).
 ---
 --- - Call to this function will remove all |extmarks| from target range.
@@ -231,7 +222,7 @@ end
 ---@param line_end number End line number (inclusive from 1 to number of lines).
 ---@param opts table|nil Options. Possible fields:
 ---   - <ref_position> `(table)` - A two-value array with `{ row, col }` (both
----     starting at 1) of reference position at which 'commentstring' value
+---     starting at 1) of reference position at which |'commentstring'| value
 ---     will be computed. Default: `{ line_start, 1 }`.
 MiniComment.toggle_lines = function(line_start, line_end, opts)
   if H.is_disabled() then return end
@@ -318,9 +309,10 @@ MiniComment.textobject = function()
     return comment_check(l) or (ignore_blank_line and H.is_blank(l))
   end
 
-  -- Recognize textobject only if on comment or blank between comments
-  local lnum_prev, lnum_next = vim.fn.prevnonblank(lnum_cur), vim.fn.nextnonblank(lnum_cur)
-  local is_in_comments = check(lnum_prev) and (lnum_prev == lnum_cur or check(lnum_next))
+  -- Recognize textobject if on comment or (possibly) blank between comments
+  local lnum_prev = vim.fn.prevnonblank(lnum_cur)
+  local is_in_comments = (lnum_prev == lnum_cur and check(lnum_prev))
+    or (ignore_blank_line and lnum_prev ~= lnum_cur and check(lnum_prev) and check(vim.fn.nextnonblank(lnum_cur)))
 
   if is_in_comments then
     lnum_from = lnum_cur
@@ -348,22 +340,22 @@ MiniComment.textobject = function()
   if config.hooks.post(hook_args) == false then return end
 end
 
---- Get 'commentstring'
+--- Get |'commentstring'|
 ---
---- This function represents default approach of computing relevant
---- 'commentstring' option in current buffer. Used to infer comment structure.
+--- This represents default approach of computing relevant |'commentstring'|
+--- option in current buffer. Used to infer comment structure.
 ---
 --- It has the following logic:
---- - If there is an active tree-sitter parser, try to get 'commentstring' from
+--- - If there is an active tree-sitter parser, try to get |'commentstring'| from
 ---   the local language at `ref_position`.
 ---
---- - If first step is not successful, use buffer's 'commentstring' directly.
+--- - If first step is not successful, use buffer's |'commentstring'| directly.
 ---
 ---@param ref_position table Reference position inside current buffer at which
----   to compute 'commentstring'. Same structure as `opts.ref_position`
+---   to compute |'commentstring'|. Same structure as `opts.ref_position`
 ---   in |MiniComment.toggle_lines()|.
 ---
----@return string Relevant value of 'commentstring'.
+---@return string Relevant value of |'commentstring'|.
 MiniComment.get_commentstring = function(ref_position)
   local buf_cs = vim.bo.commentstring
 

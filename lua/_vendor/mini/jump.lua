@@ -15,9 +15,9 @@
 --- - Normal, Visual, and Operator-pending (with dot-repeat as in clean Neovim)
 ---   modes are supported.
 ---
---- This module follows vim's 'ignorecase' and 'smartcase' options. When
---- 'ignorecase' is set, f, F, t, T will match case-insensitively. When
---- 'smartcase' is also set, f, F, t, T will only match lowercase
+--- This module follows vim's |'ignorecase'| and |'smartcase'| options. When
+--- |'ignorecase'| is set, f, F, t, T will match case-insensitively. When
+--- |'smartcase'| is also set, f, F, t, T will only match lowercase
 --- characters case-insensitively.
 ---
 --- # Setup ~
@@ -36,6 +36,7 @@
 --- To stop module from showing non-error feedback, set `config.silent = true`.
 ---
 --- # Highlight groups ~
+--- *MiniJump-hl-groups*
 ---
 --- - `MiniJump` - all possible cursor positions.
 ---
@@ -82,15 +83,6 @@ local H = {}
 ---   require('mini.jump').setup({}) -- replace {} with your config table
 --- <
 MiniJump.setup = function(config)
-  -- TODO: Remove after Neovim=0.9 support is dropped
-  if vim.fn.has('nvim-0.10') == 0 then
-    vim.notify(
-      '(mini.jump) Neovim<0.10 is soft deprecated (module works but is not supported).'
-        .. " It will be deprecated after the next 'mini.nvim' release (module might not work)."
-        .. ' Please update your Neovim version.'
-    )
-  end
-
   -- Export module
   _G.MiniJump = MiniJump
 
@@ -191,8 +183,8 @@ MiniJump.jump = function(target, backward, till, n_times)
   if H.is_disabled() then return end
 
   -- Dot-repeat should not change the state, so save it to later restore
-  local is_expr, is_dot_repeat = MiniJump._is_expr, MiniJump._is_expr and not MiniJump._is_expr_init
-  MiniJump._is_expr, MiniJump._is_expr_init = nil, nil
+  local expr_mode, is_dot_repeat = MiniJump._expr_mode, MiniJump._expr_mode ~= nil and not MiniJump._is_expr_init
+  MiniJump._expr_mode, MiniJump._is_expr_init = nil, nil
   local state_snapshot = is_dot_repeat and vim.deepcopy(MiniJump.state) or nil
 
   -- Cache inputs for future use
@@ -215,7 +207,7 @@ MiniJump.jump = function(target, backward, till, n_times)
   H.timers.idle_stop:start(config.delay.idle_stop, 0, vim.schedule_wrap(function() MiniJump.stop_jumping() end))
 
   -- Force charwise selection in Operator-pending expression mapping
-  if is_expr then vim.cmd('normal! v') end
+  if expr_mode ~= nil then vim.cmd('normal! ' .. expr_mode) end
 
   -- Make jump(s)
   H.cache.n_cursor_moved = 0
@@ -248,9 +240,9 @@ MiniJump.jump = function(target, backward, till, n_times)
   -- Ensure to stop jumping on next non-jump movement
   if MiniJump.state.jumping then H.cache.n_cursor_moved = H.cache.n_cursor_moved + 1 end
 
-  -- When in Operator-pending mapping, disable charwise selection to prevent
-  -- a character from being consumed (due to selection of a cursor cell)
-  if is_expr then vim.cmd('normal! v') end
+  -- When in Operator-pending mapping, disable selection to prevent a character
+  -- from being consumed (due to selection of a cursor cell)
+  if expr_mode ~= nil then vim.cmd('normal! ' .. expr_mode) end
 end
 
 --- Make smart jump
@@ -355,10 +347,10 @@ H.setup_config = function(config)
   return config
 end
 
+--stylua: ignore
 H.apply_config = function(config)
   MiniJump.config = config
 
-  --stylua: ignore start
   H.map('n', config.mappings.forward, '<Cmd>lua MiniJump.smart_jump(false, false)<CR>', { desc = 'Jump forward' })
   H.map('n', config.mappings.backward, '<Cmd>lua MiniJump.smart_jump(true, false)<CR>', { desc = 'Jump backward' })
   H.map('n', config.mappings.forward_till, '<Cmd>lua MiniJump.smart_jump(false, true)<CR>', { desc = 'Jump forward till' })
@@ -376,7 +368,6 @@ H.apply_config = function(config)
   H.map('o', config.mappings.forward_till, H.make_expr_jump(false, true), { expr = true, desc = 'Jump forward till' })
   H.map('o', config.mappings.backward_till, H.make_expr_jump(true, true), { expr = true, desc = 'Jump backward till' })
   H.map('o', config.mappings.repeat_jump, H.make_expr_jump(), { expr = true, desc = 'Repeat jump' })
-  --stylua: ignore end
 end
 
 H.create_autocommands = function()
@@ -418,11 +409,15 @@ H.make_expr_jump = function(backward, till)
     -- Set a flag to distinguish first call from dot-repeat
     MiniJump._is_expr_init = true
 
+    -- Take into account forced Operator-pending modes ('nov', 'noV', 'no<C-V>')
+    local vis_mode = vim.fn.mode(1):match('^no(.+)$') or 'v'
+
     -- Encode state in expression for dot-repeat. Important to use `target=nil`
     -- for `repeat_jump` case to have it using latest jumping state during
     -- dot-repeat also (as does `nvim --clean`).
-    local args = string.format('%s,%s,%s,%s', vim.inspect(target), backward, till, count)
-    return '<Cmd>lua MiniJump._is_expr=true; MiniJump.jump(' .. args .. ')<CR>'
+    local jump_cmd = string.format('MiniJump.jump(%s,%s,%s,%s)', vim.inspect(target), backward, till, count)
+    local expr_mode_cmd = 'MiniJump._expr_mode = ' .. vim.inspect(vis_mode)
+    return string.format('<Cmd>lua %s; %s<CR>', expr_mode_cmd, jump_cmd)
   end
 end
 
@@ -590,8 +585,8 @@ H.get_target = function()
   needs_reminder = false
   H.unecho()
 
-  -- Terminate if couldn't get input (like with <C-c>) or it is `<Esc>`
-  if not ok or char == '\27' then return end
+  -- Terminate if couldn't get input (like with <C-c>) or on `<Esc>`
+  if not ok or char == '' or char == '\3' or char == '\27' then return nil end
   return char
 end
 

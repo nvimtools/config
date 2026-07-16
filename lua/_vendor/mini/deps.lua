@@ -2,6 +2,18 @@
 ---
 --- MIT License Copyright (c) 2024 Evgeni Chasnovski
 
+--- *MiniDeps-dev-freeze*
+--- As Neovim=0.12 introduced a built-in plugin manager |vim.pack| (which used this
+--- module as a design reference), development of |mini.deps| is frozen. It means:
+---
+--- - On Neovim>=0.12 it is recommended to use |vim.pack| for plugin management
+---   and |MiniMisc.safely()| as |MiniDeps.now()| and |MiniDeps.later()| alternative.
+---   See https://echasnovski.com/vim-pack-guide for more details, including
+---   recommendations about migration from |mini.deps|.
+---
+--- - This module will remain a part of |mini.nvim| at least until Neovim=0.11 is
+---   supported. It might receive critical fixes, but likely no new features.
+---
 --- Features:
 ---
 --- - Manage plugins utilizing Git and built-in |packages| with these actions:
@@ -77,10 +89,11 @@
 ---
 --- - [junegunn/vim-plug](https://github.com/junegunn/vim-plug):
 ---     - Written in Vimscript, while this module is in Lua.
----     - Similar approach to defining and installing plugins as 'savq/paq-nvim'.
+---     - Similar approach to defining and installing plugins as `savq/paq-nvim`.
 ---     - Has basic lazy-loading built-in, while this module does not (by design).
 ---
 --- # Highlight groups ~
+--- *MiniDeps-hl-groups*
 ---
 --- Highlight groups are used inside confirmation buffers after
 --- default |MiniDeps.update()| and |MiniDeps.clean()|.
@@ -204,7 +217,7 @@
 --- # Freeze ~
 ---
 --- Modify plugin's specification to have `checkout` pointing to a static
---- target: tag, state (commit hash), or 'HEAD' (to freeze in current state).
+--- target: tag, state (commit hash), or `'HEAD'` (to freeze in current state).
 ---
 --- Frozen plugins will not receive updates. You can monitor any new changes from
 --- its source by "subscribing" to `monitor` branch which will be shown inside
@@ -357,15 +370,6 @@ local H = {}
 ---   require('mini.deps').setup({}) -- replace {} with your config table
 --- <
 MiniDeps.setup = function(config)
-  -- TODO: Remove after Neovim=0.9 support is dropped
-  if vim.fn.has('nvim-0.10') == 0 then
-    vim.notify(
-      '(mini.deps) Neovim<0.10 is soft deprecated (module works but is not supported).'
-        .. " It will be deprecated after the next 'mini.nvim' release (module might not work)."
-        .. ' Please update your Neovim version.'
-    )
-  end
-
   -- Export module
   _G.MiniDeps = MiniDeps
 
@@ -696,7 +700,7 @@ end
 ---
 --- Plugin is registered in current session if it either:
 --- - Was added with |MiniDeps.add()| (preserving order of calls).
---- - Is a "start" plugin and present in 'runtimpath'.
+--- - Is a "start" plugin and present in |'runtimepath'|.
 ---
 ---@return table Array with specifications of all plugins registered in
 ---   current session.
@@ -834,9 +838,8 @@ H.create_default_hl = function()
     vim.api.nvim_set_hl(0, name, opts)
   end
 
-  local has_core_diff_hl = vim.fn.has('nvim-0.10') == 1
-  hi('MiniDepsChangeAdded',   { link = has_core_diff_hl and 'Added' or 'diffAdded' })
-  hi('MiniDepsChangeRemoved', { link = has_core_diff_hl and 'Removed' or 'diffRemoved' })
+  hi('MiniDepsChangeAdded',   { link = 'Added' })
+  hi('MiniDepsChangeRemoved', { link = 'Removed' })
   hi('MiniDepsHint',          { link = 'DiagnosticHint' })
   hi('MiniDepsInfo',          { link = 'DiagnosticInfo' })
   hi('MiniDepsMsgBreaking',   { link = 'DiagnosticWarn' })
@@ -1004,7 +1007,7 @@ H.expand_spec = function(target, spec)
 
   -- Expand dependencies recursively before adding current spec to target
   spec.depends = vim.deepcopy(spec.depends) or {}
-  if not H.islist(spec.depends) then H.error('`depends` in plugin spec should be array.') end
+  if not vim.islist(spec.depends) then H.error('`depends` in plugin spec should be array.') end
   for _, dep_spec in ipairs(spec.depends) do
     H.expand_spec(target, dep_spec)
   end
@@ -1101,7 +1104,7 @@ end
 
 -- Plugin operation helpers ---------------------------------------------------
 H.plugs_from_names = function(names)
-  if names and not H.islist(names) then H.error('`names` should be array.') end
+  if names and not vim.islist(names) then H.error('`names` should be array.') end
   for _, name in ipairs(names or {}) do
     if type(name) ~= 'string' then H.error('`names` should contain only strings.') end
   end
@@ -1640,8 +1643,5 @@ end
 H.source = function(path)
   pcall(function() vim.cmd('source ' .. vim.fn.fnameescape(path)) end)
 end
-
--- TODO: Remove after compatibility with Neovim=0.9 is dropped
-H.islist = vim.fn.has('nvim-0.10') == 1 and vim.islist or vim.tbl_islist
 
 return MiniDeps

@@ -2,7 +2,7 @@
 ---
 --- MIT License Copyright (c) 2023 Evgeni Chasnovski
 
---- Install, create 'init.lua', add `require('mini.basics').setup()`, and you
+--- Install, create `init.lua`, add `require('mini.basics').setup()`, and you
 --- are good to go.
 ---
 --- Features:
@@ -44,11 +44,11 @@
 --- # Comparisons ~
 ---
 --- - [tpope/vim-sensible](https://github.com/tpope/vim-sensible):
----     - Most of 'tpope/vim-sensible' is already incorporated as default
+---     - Most of `tpope/vim-sensible` is already incorporated as default
 ---       options in Neovim (see |nvim-defaults|). This module has a much
 ---       broader effect.
 --- - [tpope/vim-unimpaired](https://github.com/tpope/vim-unimpaired):
----     - The 'tpope/vim-unimpaired' has mapping for toggling options with `yo`
+---     - The `tpope/vim-unimpaired` has mapping for toggling options with `yo`
 ---       prefix. This module implements similar functionality with `\` prefix
 ---       (see |MiniBasics.config.mappings|).
 ---@tag MiniBasics
@@ -74,15 +74,6 @@ local H = {}
 ---   require('mini.basics').setup({}) -- replace {} with your config table
 --- <
 MiniBasics.setup = function(config)
-  -- TODO: Remove after Neovim=0.9 support is dropped
-  if vim.fn.has('nvim-0.10') == 0 then
-    vim.notify(
-      '(mini.basics) Neovim<0.10 is soft deprecated (module works but is not supported).'
-        .. " It will be deprecated after the next 'mini.nvim' release (module might not work)."
-        .. ' Please update your Neovim version.'
-    )
-  end
-
   -- Export module
   _G.MiniBasics = MiniBasics
 
@@ -114,7 +105,7 @@ end
 --- commonly used (judging by study of available Neovim pre-configurations,
 --- public dotfiles, and surveys).
 --- Any option is changed only if it was not set manually beforehand.
---- For exact changes, please see source code ('lua/mini/basics.lua').
+--- For exact changes, please see source code (`lua/mini/basics.lua`).
 ---
 --- Here is the list of affected options (put cursor on it and press |CTRL-]|):
 --- - General:
@@ -138,7 +129,6 @@ end
 ---     - |'splitbelow'|
 ---     - |'splitkeep'|
 ---     - |'splitright'|
----     - |'termguicolors'| (on Neovim<0.10; later versions have it smartly enabled)
 ---     - |'wrap'|
 --- - Editing
 ---     - |'completeopt'|
@@ -155,7 +145,7 @@ end
 --- The `config.options.extra_ui` sets certain options for visual appearance
 --- which might not be aligned with common preferences, but still worth trying.
 --- Any option is changed only if it was not set manually beforehand.
---- For exact changes, please see source code ('lua/mini/basics.lua').
+--- For exact changes, please see source code (`lua/mini/basics.lua`).
 ---
 --- List of affected options:
 --- - |'list'|
@@ -223,8 +213,6 @@ end
 --- <
 --- Notes:
 --- - See |[count]| for its meaning.
---- - On Neovim>=0.10 mappings for `#` and `*` are not created as their
----   enhanced variants are made built-in. See |v_star-default| and |v_#-default|.
 --- - On Neovim>=0.11 there are |[<Space>| / |]<Space>| for adding empty lines.
 ---   The `gO` and `go` mappings are still created as they are more aligned with
 ---   similarly purposed |O| and |o| keys (although sometimes conflict with |gO|).
@@ -238,7 +226,7 @@ end
 --- Other viable choices for prefix are
 --- - `,` (as a mnemonic for several values to toggle).
 --- - `|` (as a same mnemonic).
---- - `yo` (used in 'tpope/vim-unimpaired')
+--- - `yo` (used in `tpope/vim-unimpaired`)
 --- - Something with |<Leader>| key, like `<Leader>t` (`t` for "toggle"). Note:
 ---   if your prefix contains `<Leader>` key, make sure to set it before
 ---   calling |MiniBasics.setup()| (as is done with default `basic` field of
@@ -314,8 +302,9 @@ end
 --- The `config.autocommands.basic` creates some common autocommands:
 ---
 --- - Starts insert mode when opening terminal (see |:startinsert| and |TermOpen|).
---- - Highlights yanked text for a brief period of time (see |vim.hl.on_yank()|;
----   on Neovim<0.11 - |vim.hl.on_yank()|) and |TextYankPost|).
+--- - Highlights yanked text for a brief period of time. See |vim.hl.on_yank()|
+---   (which is |vim.hl.hl_op()| on Neovim>=0.13 and |vim.highlight.on_yank()|
+---   on Neovim<0.11) and |TextYankPost|.
 ---
 --- ## autocommands.relnum_in_visual_mode ~
 ---
@@ -372,20 +361,9 @@ MiniBasics.config = {
 ---
 ---@return string String indicator for new state. Similar to what |:set| `{option}?` shows.
 MiniBasics.toggle_diagnostic = function()
-  local buf_id = vim.api.nvim_get_current_buf()
-  local is_enabled = H.diagnostic_is_enabled(buf_id)
-
-  local f
-  if vim.fn.has('nvim-0.10') == 1 then
-    f = function(bufnr) vim.diagnostic.enable(not is_enabled, { bufnr = bufnr }) end
-  else
-    f = is_enabled and vim.diagnostic.disable or vim.diagnostic.enable
-  end
-  f(buf_id)
-
-  local new_buf_state = not is_enabled
-
-  return new_buf_state and '  diagnostic' or 'nodiagnostic'
+  local is_enabled = vim.diagnostic.is_enabled({ bufnr = 0 })
+  vim.diagnostic.enable(not is_enabled, { bufnr = 0 })
+  return is_enabled and 'nodiagnostic' or '  diagnostic'
 end
 
 -- Helper data ================================================================
@@ -477,13 +455,9 @@ H.apply_options = function(config)
     o.virtualedit   = 'block'            -- Allow going past the end of line in visual block mode
     o.formatoptions = 'qjl1'             -- Don't autoformat comments
 
-    -- Neovim version dependent
+    -- Other
     opt.shortmess:append('WcC') -- Reduce command line messages
     o.splitkeep = 'screen'      -- Reduce scroll during window split
-
-    if vim.fn.has('nvim-0.10') == 0 then
-      o.termguicolors = true -- Enable gui colors
-    end
   end
 
   -- Some opinioneted extra UI options
@@ -532,11 +506,11 @@ H.vim_opt = setmetatable({}, {
 
 --stylua: ignore
 H.win_borders_fillchars = {
-  bold   = 'vert:┃,horiz:━,horizdown:┳,horizup:┻,verthoriz:╋,vertleft:┫,vertright:┣,msgsep:━',
-  dot    = 'vert:·,horiz:·,horizdown:·,horizup:·,verthoriz:·,vertleft:·,vertright:·,msgsep:·',
-  double = 'vert:║,horiz:═,horizdown:╦,horizup:╩,verthoriz:╬,vertleft:╣,vertright:╠,msgsep:═',
-  single = 'vert:│,horiz:─,horizdown:┬,horizup:┴,verthoriz:┼,vertleft:┤,vertright:├,msgsep:─',
-  solid  = 'vert: ,horiz: ,horizdown: ,horizup: ,verthoriz: ,vertleft: ,vertright: ,msgsep: ',
+  bold   = 'horiz:━,horizdown:┳,horizup:┻,msgsep:━,vert:┃,verthoriz:╋,vertleft:┫,vertright:┣',
+  dot    = 'horiz:·,horizdown:·,horizup:·,msgsep:·,vert:·,verthoriz:·,vertleft:·,vertright:·',
+  double = 'horiz:═,horizdown:╦,horizup:╩,msgsep:═,vert:║,verthoriz:╬,vertleft:╣,vertright:╠',
+  single = 'horiz:─,horizdown:┬,horizup:┴,msgsep:─,vert:│,verthoriz:┼,vertleft:┤,vertright:├',
+  solid  = 'horiz: ,horizdown: ,horizup: ,msgsep: ,vert: ,verthoriz: ,vertleft: ,vertright: ',
 }
 H.winborder_map = { none = 'solid', rounded = 'single', shadow = 'solid' }
 
@@ -591,14 +565,6 @@ H.apply_mappings = function(config)
     -- Search inside visually highlighted text. Use `silent = false` for it to
     -- make effect immediately.
     map('x', 'g/', '<esc>/\\%V', { silent = false, desc = 'Search inside visual selection' })
-
-    -- Search visually selected text (slightly better than builtins in
-    -- Neovim<0.10 but slightly worse than builtins in Neovim>=0.10)
-    -- TODO: Remove this after compatibility with Neovim=0.9 is dropped
-    if vim.fn.has('nvim-0.10') == 0 then
-      map('x', '*', [[y/\V<C-R>=escape(@", '/\')<CR><CR>]], { desc = 'Search forward' })
-      map('x', '#', [[y?\V<C-R>=escape(@", '?\')<CR><CR>]], { desc = 'Search backward' })
-    end
 
     -- Alternative way to save and exit in Normal mode.
     -- NOTE: Adding `redraw` helps with `cmdheight=0` if buffer is not modified
@@ -716,7 +682,8 @@ H.apply_autocommands = function(config)
   end
 
   if config.autocommands.basic then
-    local f = function() vim.hl.on_yank() end
+    local f = function() vim.hl.hl_op() end
+    if vim.fn.has('nvim-0.13') == 0 then f = function() vim.hl.on_yank() end end
     if vim.fn.has('nvim-0.11') == 0 then f = function() vim.highlight.on_yank() end end
     au('TextYankPost', '*', f, 'Highlight yanked text')
 
@@ -759,12 +726,6 @@ H.map = function(mode, lhs, rhs, opts)
   if lhs == '' then return end
   opts = vim.tbl_deep_extend('force', { silent = true }, opts or {})
   vim.keymap.set(mode, lhs, rhs, opts)
-end
-
-if vim.fn.has('nvim-0.10') == 1 then
-  H.diagnostic_is_enabled = function(buf_id) return vim.diagnostic.is_enabled({ bufnr = buf_id }) end
-else
-  H.diagnostic_is_enabled = function(buf_id) return not vim.diagnostic.is_disabled(buf_id) end
 end
 
 return MiniBasics
