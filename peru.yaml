@@ -10,40 +10,40 @@ imports:
   surround|mini: lua/_vendor/mini
 
 git module deps:
-  url: https://github.com/echasnovski/mini.deps
-  rev: e5aae804000d6471dc40c19b548ff266b200e36c
+  url: https://github.com/nvim-mini/mini.deps
+  rev: c5b90b04661cc3a099ea81bd4f29fc6949289f99
 
 git module basics:
-  url: https://github.com/echasnovski/mini.basics
-  rev: 83bac7ef66d88f22f8b6146aa59e283bb3dc1cf9
+  url: https://github.com/nvim-mini/mini.basics
+  rev: ba51fd0f8c13176f22f2630587dc32659fd3f612
 
 git module completion:
-  url: https://github.com/echasnovski/mini.completion
-  rev: d2a2b2a2b5350b713ade3bb744df39eee7d4229b
+  url: https://github.com/nvim-mini/mini.completion
+  rev: cda8669fb9a7fd681016f43dddcc2a635f8b645d
 
 git module ai:
-  url: https://github.com/echasnovski/mini.ai
-  rev: 25248c6aa002391936a6200f12d1466015987133
+  url: https://github.com/nvim-mini/mini.ai
+  rev: 98a5d73937930a2bb08129020601ab8d5016d706
 
 git module comment:
-  url: https://github.com/echasnovski/mini.comment
-  rev: 27a29d6b949b9497f80a0a03421e89fed71d8c37
+  url: https://github.com/nvim-mini/mini.comment
+  rev: 3aa39b795c6dc54dbeaf2863aa91215850c4c8e0
 
 git module bufremove:
-  url: https://github.com/echasnovski/mini.bufremove
-  rev: 281bb1a2c60c3618c854bef2c0933276eb2362c2
+  url: https://github.com/nvim-mini/mini.bufremove
+  rev: 6e9c563cb71a8e4d57c4fb4089eb90a3bf3e8851
 
 git module jump:
-  url: https://github.com/echasnovski/mini.jump
-  rev: 6a1688315d69e4f8428d529e194714447b0d4e82
+  url: https://github.com/nvim-mini/mini.jump
+  rev: a82ca82616b64439b467d6c9b44419870c6a4653
 
 git module pairs:
-  url: https://github.com/echasnovski/mini.pairs
-  rev: b1fd9df3bb4a41c8f45778a3859ee80ef6b367e3
+  url: https://github.com/nvim-mini/mini.pairs
+  rev: 03eb1f0062a2cee5314d1ac3939246e4bb21352e
 
 git module surround:
-  url: https://github.com/echasnovski/mini.surround
-  rev: c30ec60393b256427512c6996a2b37d9cbcbb66a
+  url: https://github.com/nvim-mini/mini.surround
+  rev: 5357f00aca51a3b43e7775901b1ad9699f8c2678
 
 rule mini:
   export: lua/mini/

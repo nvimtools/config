@@ -89,7 +89,8 @@
 ---   also adding "nosort" flag to preserve initial order when filtering.
 --- - |'shortmess'| is appended with "c" flag for silent <C-n> fallback.
 --- - |'complete'| gets removed "t" flag (if fallback action is default), as it
----   leads to visible lags.
+---   leads to visible lags. The recommended full value of |'complete'| that
+---   achieves the best combination of performance and sources is `.,w,b,kspell`.
 ---
 --- # Snippets ~
 ---
@@ -701,7 +702,7 @@ H.completion = {
   force = false,
   source = nil,
   text_changed_id = 0,
-  timer = vim.loop.new_timer(),
+  timer = vim.uv.new_timer(),
   lsp = { id = 0, status = nil, is_incomplete = false, result = nil, resolved = {}, cancel_fun = nil, context = nil },
   init_base = { lnum = nil, col = nil, length = nil },
 }
@@ -711,7 +712,7 @@ H.info = {
   bufnr = nil,
   event = nil,
   id = 0,
-  timer = vim.loop.new_timer(),
+  timer = vim.uv.new_timer(),
   win_id = nil,
   lsp = { id = 0, status = nil, result = nil, cancel_fun = nil },
 }
@@ -720,7 +721,7 @@ H.info = {
 H.signature = {
   bufnr = nil,
   text = nil,
-  timer = vim.loop.new_timer(),
+  timer = vim.uv.new_timer(),
   win_id = nil,
   lsp = { id = 0, status = nil, result = nil, cancel_fun = nil },
 }
@@ -1770,6 +1771,7 @@ H.ensure_buffer = function(cache, name)
   local buf_id = vim.api.nvim_create_buf(false, true)
   cache.bufnr = buf_id
   H.set_buf_name(buf_id, name)
+  vim.bo[buf_id].modifiable = true
   vim.bo[buf_id].buftype = 'nofile'
 end
 
@@ -1924,9 +1926,13 @@ H.is_whitespace = function(s)
   return false
 end
 
-H.fit_to_width = function(text, width)
-  local t_width = vim.fn.strchars(text)
-  return t_width <= width and text or ('…' .. vim.fn.strcharpart(text, t_width - width + 1, width - 1))
+H.fit_to_width = function(text, width, dir)
+  if vim.api.nvim_strwidth(text) <= width then return text end
+  for w = vim.fn.strchars(text) - 1, 1, -1 do
+    text = vim.fn.strcharpart(text, dir == 'right' and 0 or 1, w)
+    if vim.api.nvim_strwidth(text) < width then return dir == 'right' and (text .. '…') or ('…' .. text) end
+  end
+  return width < 1 and '' or '…'
 end
 
 H.str_byteindex = function(s, i) return vim.str_byteindex(s, 'utf-32', i) end

@@ -7,9 +7,10 @@
 --- user to create their own.
 ---
 --- Features:
---- - Customizable creation of `a`/`i` textobjects using Lua patterns and functions.
+--- - Customizable creation of `a` / `i` textobjects using Lua patterns and functions.
 ---   Supports:
 ---     - Dot-repeat.
+---     - |multicursor|.
 ---     - |v:count|.
 ---     - Different search methods (see |MiniAi.config|).
 ---     - Consecutive application (update selection without leaving Visual mode).
@@ -113,19 +114,19 @@
 --- This table describes all builtin textobjects along with what they
 --- represent. Explanation:
 --- - `Key` represents the textobject identifier: single character which should
----   be typed after `a`/`i`.
+---   be typed after `a` / `i`.
 --- - `Name` is a description of textobject.
 --- - `Example line` contains a string for which examples are constructed. The
 ---   `*` denotes the cursor position.
---- - `a`/`i` describe inclusive region representing `a` and `i` textobjects.
+--- - `a` / `i` describe inclusive region representing `a` and `i` textobjects.
 ---   Use numbers in separators for easier navigation.
---- - `2a`/`2i` describe either `2a`/`2i` (support for |v:count|) textobjects
----   or `a`/`i` textobject followed by another `a`/`i` textobject (consecutive
+--- - `2a` / `2i` describe either `2a` / `2i` (support for |v:count|) textobjects
+---   or `a` / `i` textobject followed by another `a` / `i` textobject (consecutive
 ---   application leads to incremental selection).
 ---
 --- Example: typing `va)` with cursor on `*` leads to selection from column 2
 --- to column 12. Another typing `a)` changes selection to [1; 13]. Also, besides
---- visual selection, any |operator| can be used or `g[`/`g]` motions to move
+--- visual selection, any |operator| can be used or `g[` / `g]` motions to move
 --- to left/right edge of `a` textobject.
 --- >
 ---  ┌───┬───────────────┬──────────────────┬────────┬────────┬────────┬────────┐
@@ -642,7 +643,8 @@ MiniAi.config = {
 ---     Default: 1.
 ---   - <reference_region> - region to try to cover (see |MiniAi-glossary|). It
 ---     is guaranteed that output region will not be inside or equal to this one.
----     Default: empty region at cursor position.
+---     Default: current selection in Visual mode, empty region at cursor position
+---     in other modes.
 ---   - <search_method> - Search method. Default: `config.search_method`.
 ---
 ---@return table|nil Region of textobject or `nil` if no textobject different
@@ -650,7 +652,14 @@ MiniAi.config = {
 MiniAi.find_textobject = function(ai_type, id, opts)
   if not (ai_type == 'a' or ai_type == 'i') then H.error([[`ai_type` should be one of 'a' or 'i'.]]) end
   H.check_type('id', id, 'string')
-  opts = vim.tbl_deep_extend('force', H.get_default_opts(), opts or {})
+
+  local config = H.get_config()
+  opts = opts or {}
+  opts.n_lines = opts.n_lines or config.n_lines
+  opts.n_times = opts.n_times or 1
+  opts.reference_region = opts.reference_region
+    or (H.is_visual_mode() and H.get_visual_region() or { from = { line = vim.fn.line('.'), col = vim.fn.col('.') } })
+  opts.search_method = opts.search_method or config.search_method
   H.validate_search_method(opts.search_method)
 
   -- Get textobject specification
@@ -1024,13 +1033,7 @@ end
 ---   <a> and <i> fields with captures for `a` and `i` textobjects respectively.
 ---   Each value can be either a string capture (should start with `'@'`) or an
 ---   array of such captures (best among all matches will be chosen).
----@param opts table|nil Options. Possible values:
----   - <use_nvim_treesitter> - whether to try to use `nvim-treesitter` plugin
----     (if present) to do the query. It used to implement more advanced behavior
----     and more coherent experience if `nvim-treesitter-textobjects` queries are
----     used. However, as |lua-treesitter-core| methods are more capable now,
----     the option will soon be removed. Only present for backward compatibility.
----     Default: `false`.
+---@param opts table|nil Options. Not used at the moment.
 ---
 ---@return function Function with |MiniAi.find_textobject()| signature which
 ---   returns array of current buffer regions representing matches for
@@ -1042,8 +1045,18 @@ end
 --- - |Query:iter_captures()| for how all query captures are iterated in case of
 ---   no `nvim-treesitter`.
 MiniAi.gen_spec.treesitter = function(ai_captures, opts)
-  -- TODO: Remove after releasing 'mini.nvim' 0.17.0
-  opts = vim.tbl_deep_extend('force', { use_nvim_treesitter = false }, opts or {})
+  -- TODO: Remove after releasing 'mini.nvim' 0.19.0
+  opts = opts or {}
+  if opts.use_nvim_treesitter then
+    vim.notify(
+      '(mini.ai) `opts.use_nvim_treesitter` in `MiniAi.gen_spec.treesitter()` is deprecated.'
+        .. " It will be removed after the next 'mini.nvim' release in favor of using built-in `vim.treesitter` API."
+        .. ' Drop setting this option.'
+        .. ' In case of problems not addressed in `:h MiniAi.gen_spec.treesitter()`, please open an issue.',
+      vim.log.levels.WARN
+    )
+  end
+
   ai_captures = H.prepare_ai_captures(ai_captures)
 
   -- Tree-sitter ranges are 0-based, end-exclusive, and usually
@@ -1089,6 +1102,14 @@ end
 ---@return function Textobject specification as function.
 MiniAi.gen_spec.user_prompt = function()
   return function()
+    -- Should ask for user input if a result of initial user mapping AND during
+    -- its multicursor cascade (as it will replay all keys).
+    -- BUT should NOT ask for input later as a result of `.`, even during
+    -- multicursor cascade (as it will replay `.`).
+    H.cache.n_calls = H.cache.n_calls or 0
+    if not H.is_mc_cascade() then H.cache.n_calls = H.cache.n_calls + 1 end
+    if H.cache.n_calls <= 1 then H.cache.prompted_textobject = nil end
+
     -- Using cache allows for a dot-repeat without another user input
     if H.cache.prompted_textobject ~= nil then return H.cache.prompted_textobject end
 
@@ -1096,9 +1117,6 @@ MiniAi.gen_spec.user_prompt = function()
     if left == nil or left == '' then return end
     local right = H.user_input('Right edge')
     if right == nil or right == '' then return end
-
-    -- Clean command line from prompt messages (does not work in Visual mode)
-    vim.cmd([[echo '' | redraw]])
 
     local left_esc, right_esc = vim.pesc(left), vim.pesc(right)
     local res = { string.format('%s().-()%s', left_esc, right_esc) }
@@ -1120,18 +1138,11 @@ end
 ---     Used in that mode's mappings, shouldn't be used directly. Default: `false`.
 MiniAi.select_textobject = function(ai_type, id, opts)
   if H.is_disabled() then return end
-
   opts = opts or {}
-  local operator_pending = opts.operator_pending
-
-  -- Exit to Normal before getting textobject id. This way invalid id doesn't
-  -- result into staying in current mode (which seems to be more convenient).
-  H.exit_to_normal_mode()
 
   local tobj = MiniAi.find_textobject(ai_type, id, opts)
-  if tobj == nil then return end
-
-  local set_cursor = function(position) vim.api.nvim_win_set_cursor(0, { position.line, position.col - 1 }) end
+  -- NOTE: don't stay in current mode for bad id (seems to be more convenient)
+  if tobj == nil then return H.ensure_normal_mode() end
 
   -- Allow empty regions
   local tobj_is_empty = tobj.to == nil
@@ -1175,14 +1186,19 @@ MiniAi.select_textobject = function(ai_type, id, opts)
     vim.o.virtualedit = 'onemore'
 
     -- Select region:
-    -- - Go from start to end stay at range end in Visual mode (as done in
+    -- - Ensure target visual mode if needed. Preserve active Visual mode.
+    -- - Go from start to end to stay at range end in Visual mode (as does
     --   built-in visual selection).
     -- - Open just enough folds to have both ends visible.
     -- - Respect exclusive selection (including when selecting end of line)
-    set_cursor(tobj.from)
+    local is_vis, cur_mode = H.is_visual_mode()
+    if not is_vis then H.ensure_normal_mode() end
+    if cur_mode ~= vis_mode and (not is_vis or tobj.vis_mode ~= nil) then vim.cmd('normal! ' .. vis_mode) end
+
+    vim.api.nvim_win_set_cursor(0, { tobj.from.line, tobj.from.col - 1 })
     vim.cmd('normal! zv')
-    vim.cmd('normal! ' .. vis_mode)
-    set_cursor(tobj.to)
+    vim.cmd('normal! o')
+    vim.api.nvim_win_set_cursor(0, { tobj.to.line, tobj.to.col - 1 })
     if vim.o.selection == 'exclusive' and not tobj_is_empty then vim.cmd('set whichwrap=l | normal! l') end
     vim.cmd('normal! zv')
 
@@ -1238,7 +1254,7 @@ H.builtin_textobjects = {
   -- Function call
   ['f'] = MiniAi.gen_spec.function_call(),
   -- Tag
-  ['t'] = { '<(%w-)%f[^<%w][^<>]->.-</%1>', '^<.->().*()</[^/]->$' },
+  ['t'] = { '<(%w-)%f[^<%w][^<>]->.-</%1%s->', '^<.->().*()</.->$' },
   -- Quotes
   ['q'] = { { "%b''", '%b""', '%b``' }, '^.().*().$' },
 }
@@ -1350,18 +1366,14 @@ H.expr_textobject = function(mode, ai_type, opts)
     if vim.fn.maparg(res, mode) ~= '' then res = '<Ignore>' .. res end
     return res
   end
-  opts = vim.tbl_deep_extend('force', H.get_default_opts(), opts or {})
 
   -- Clear cache
   H.cache = {}
 
   -- Construct call options based on mode
-  local reference_region_field, operator_pending_field, vis_mode_field = 'nil', 'nil', 'nil'
-
-  if mode == 'x' then
-    -- Use Visual selection as reference region for Visual mode mappings
-    reference_region_field = vim.inspect(H.get_visual_region(), { newline = '', indent = '' })
-  end
+  -- NOTE: Do not precompute reference region to recompute it with multicursor
+  local operator_pending_field, vis_mode_field = 'nil', 'nil'
+  local search_method = (opts or {}).search_method or H.get_config().search_method
 
   if mode == 'o' then
     -- Supply `operator_pending` flag in Operator-pending mode
@@ -1375,12 +1387,11 @@ H.expr_textobject = function(mode, ai_type, opts)
   -- Make expression
   return '<Cmd>lua '
     .. string.format(
-      [[MiniAi.select_textobject('%s', %s, { search_method = %s, n_times = %d, reference_region = %s, operator_pending = %s, vis_mode = %s })]],
+      'MiniAi.select_textobject("%s", %s, { search_method = %s, n_times = %d, operator_pending = %s, vis_mode = %s })',
       ai_type,
       vim.inspect(tobj_id),
-      vim.inspect(opts.search_method),
+      vim.inspect(search_method),
       vim.v.count1,
-      reference_region_field,
       operator_pending_field,
       vis_mode_field
     )
@@ -1528,18 +1539,6 @@ H.find_textobject_region = function(tobj_spec, ai_type, opts)
 
   -- Convert to region
   return neigh.span_to_region(final_span, find_res.vis_mode)
-end
-
-H.get_default_opts = function()
-  local config = H.get_config()
-  local cur_pos = vim.api.nvim_win_get_cursor(0)
-  return {
-    n_lines = config.n_lines,
-    n_times = vim.v.count1,
-    -- Empty region at cursor position
-    reference_region = { from = { line = cur_pos[1], col = cur_pos[2] + 1 } },
-    search_method = config.search_method,
-  }
 end
 
 -- Work with argument textobject ----------------------------------------------
@@ -2069,8 +2068,13 @@ H.user_input = function(prompt, text)
   vim.cmd('echohl None | echo "" | redraw')
 
   vim.on_key(nil, H.ns_id.input)
+  vim.cmd('echo "" | redraw')
+
   return (ok and not was_cancelled) and res or nil
 end
+
+H.is_mc_cascade = function() return vim.v.cascading end
+if vim.fn.has('nvim-0.13') == 0 then H.is_mc_cascade = function() return false end end
 
 -- Work with Visual mode ------------------------------------------------------
 H.is_visual_mode = function(mode)
@@ -2079,15 +2083,12 @@ H.is_visual_mode = function(mode)
   return mode == 'v' or mode == 'V' or mode == '\22', mode
 end
 
-H.exit_to_normal_mode = function()
-  -- Don't use `<C-\><C-n>` in command-line window as they close it
-  if vim.fn.getcmdwintype() ~= '' then
-    local is_vis, cur_mode = H.is_visual_mode()
-    if is_vis then vim.cmd('normal! ' .. cur_mode) end
-  else
-    -- '\28\14' is an escaped version of `<C-\><C-n>`
-    vim.cmd('normal! \28\14')
-  end
+H.ensure_normal_mode = function()
+  -- '\28\14' is an escaped version of `<C-\><C-n>`. Don't use in command-line
+  -- window as they close it.
+  if vim.fn.getcmdwintype() == '' then return vim.cmd('normal! \28\14') end
+  local is_vis, cur_mode = H.is_visual_mode()
+  if is_vis then vim.cmd('normal! ' .. cur_mode) end
 end
 
 H.get_visual_region = function()
